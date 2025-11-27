@@ -14,6 +14,7 @@ install(
   scripts/state_manager_node.py
   scripts/coordinate_follower_node.py
   scripts/system_monitor_node.py
+  scripts/cone_follower_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
