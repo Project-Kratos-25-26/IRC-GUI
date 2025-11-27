@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>RADO Command Center</title>
+    <script src="https://cdn.jsdelivr.net/npm/roslib@1/build/roslib.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <div class="header">
+        <div class="brand"><i class="fas fa-robot"></i> RADO CONTROL</div>
+        <div class="header-right">
+            <div id="connection-dot" style="color:red; font-size:12px;">● DISCONNECTED</div>
+            <div id="state-badge" class="status-badge MANUAL">MANUAL</div>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn" onclick="openTab('tab-setup')"><i class="fas fa-tools"></i> SETUP</button>
+        <button class="tab-btn" onclick="openTab('tab-health')"><i class="fas fa-heartbeat"></i> HEALTH</button>
+        <button class="tab-btn active" onclick="openTab('tab-recon')"><i class="fas fa-eye"></i> RECON</button>
+        <button class="tab-btn" onclick="openTab('tab-mission')"><i class="fas fa-map-marked-alt"></i> MISSION</button>
+        <button class="tab-btn" onclick="openTab('tab-arm')"><i class="fas fa-hand-rock"></i> ARM & LD</button>
+    </div>
+
+    <div class="content">
+        <div id="tab-setup" class="tab-pane">
+            <div class="grid-3">
+                <div class="card"><h3>Node Mgmt</h3><button onclick="sendSysCommand('restart_mavros')">Restart MAVROS</button></div>
+                </div>
+        </div>
+
+        <div id="tab-health" class="tab-pane">
+            <div class="card" style="max-width: 600px; margin: 0 auto;">
+                <h3>Diagnostics</h3><div id="health-list"></div>
+            </div>
+        </div>
+
+        <div id="tab-recon" class="tab-pane active">
+            <div class="grid-2">
+                <div class="camera-box"><img id="video-stream" class="camera-feed" src="" alt="NO SIGNAL"></div>
+                <div style="display:flex; flex-direction:column; gap:20px;">
+                    <div class="card">
+                        <h3>GPS</h3>
+                        <div>LAT: <span id="recon-lat">0.00</span></div>
+                        <div>LON: <span id="recon-lon">0.00</span></div>
+                    </div>
+                    <div class="card">
+                        <h3>Log Target</h3>
+                        <select id="obj-select"><option>OBJECT_1</option><option>DELIVERY_1</option></select>
+                        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+                            <button class="btn-red" onclick="selColor('RED')">R</button>
+                            <button class="btn-green" onclick="selColor('GREEN')">G</button>
+                            <button class="btn-blue" onclick="selColor('BLUE')">B</button>
+                        </div>
+                        <button class="btn-blue" style="margin-top:10px" onclick="sendLog()">LOG</button>
+                        <div id="log-msg" style="text-align:center;">Ready</div>
+                    </div>
+                    <button class="btn-green" style="margin-top:auto" onclick="openTab('tab-mission')">GO TO MAP</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-mission" class="tab-pane">
+            <div class="grid-2">
+                <div class="card" style="height:100%"><div id="map"></div></div>
+                <div class="card">
+                    <button class="btn-green" style="height:80px; margin-bottom:20px;" onclick="sendCmd('PROCEED')">PROCEED</button>
+                    <button class="btn-red" style="height:80px;" onclick="sendCmd('MANUAL')">STOP</button>
+                    <ul id="mission-log"></ul>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-arm" class="tab-pane">
+            <div class="grid-2">
+                <div class="card">
+                    <h3>Arm</h3>
+                    <div class="arm-slider-group"><label>Base <span>0</span></label><input type="range" min="-90" max="90" oninput="updateArm(0, this.value)"></div>
+                    </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/ros_module.js"></script>
+    <script src="js/map_module.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

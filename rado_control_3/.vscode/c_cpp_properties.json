@@ -1,0 +1,29 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/ubuntu/ros2_ws/install/my_robot_interfaces/include/**",
+        "/home/ubuntu/ros2_ws/install/main/include/**",
+        "/home/ubuntu/ros2_ws/install/coordinate_follower/include/**",
+        "/home/ubuntu/install/coordinate_follower/include/**",
+        "/opt/ros/humble/include/**",
+        "/home/ubuntu/ros2_ws/src/aruco_navigator/include/**",
+        "/home/ubuntu/ros2_ws/src/obstacle_avoider/include/**",
+        "/home/ubuntu/ros2_ws/src/rado_control/include/**",
+        "/home/ubuntu/ros2_ws/src/rado_control_3/include/**",
+        "include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-arm64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}
