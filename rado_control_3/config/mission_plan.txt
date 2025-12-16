@@ -1,2 +1,2 @@
-OBJECT_1,10.0,5.0
-DELIVERY_1,20.0,15.0
+pickup,red,15.3911,73.8782
+dropoff,red,15.3915,73.8785

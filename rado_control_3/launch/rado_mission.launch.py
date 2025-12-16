@@ -47,10 +47,17 @@ def generate_launch_description():
             name='state_manager'
         ),
 
-        # 6. Coordinate Follower
+        # 6. Coordinate Follower (Mission Manager)
         Node(
             package=pkg_name,
             executable='coordinate_follower_node.py',
             name='coordinate_follower'
+        ),
+
+        # 7. Cone Follower (Vision Pilot)
+        Node(
+            package=pkg_name,
+            executable='cone_follower_node.py',
+            name='cone_follower'
         )
     ])
