@@ -71,14 +71,17 @@ class ConeFollower(Node):
         candidates = [d for d in self.latest_detections if d.get('color', '').lower() == self.target_color]
         
         if not candidates:
-            # Search behavior (spin slowly?) or just wait
-            # For now, just stop and wait
-            self.stop_rover()
+            # Search behavior: Spin slowly to find the cone
+            self.get_logger().info("Searching for cone...", throttle_duration_sec=2)
+            twist = Twist()
+            twist.angular.z = 0.4  # Spin speed
+            self.velocity_pub.publish(twist)
             return
 
-        # Pick the closest one (largest confidence or closest depth)
-        # Prefer depth if available
-        candidates.sort(key=lambda x: x.get('depth_m') if x.get('depth_m') else 999.0)
+        # Pick the closest one (smallest depth)
+        # We filter out invalid depths (None or 0.0) by treating them as very far (999.0)
+        # This ensures we lock onto the closest valid cone.
+        candidates.sort(key=lambda x: x.get('depth_m') if x.get('depth_m') and x.get('depth_m') > 0.1 else 999.0)
         target_cone = candidates[0]
 
         # Control Logic
