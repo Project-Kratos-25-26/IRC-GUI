@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
 from std_msgs.msg import String, Bool
 from sensor_msgs.msg import NavSatFix, Image
 from geometry_msgs.msg import Twist
@@ -47,7 +48,7 @@ class SystemMonitor(Node):
                 msg_type, 
                 topic, 
                 lambda msg, n=name: self.topic_callback(msg, n), 
-                10
+                qos_profile_sensor_data
             )
 
         # Timer for the Watchdog (Runs every 1 second)
