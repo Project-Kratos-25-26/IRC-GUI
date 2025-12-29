@@ -1,11 +1,10 @@
 import os
 from launch import LaunchDescription
 from launch_ros.actions import Node, SetRemap
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, GroupAction
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, GroupAction, LogInfo
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
-# --- NEW IMPORT ---
-from launch_xml.launch_description_sources import XMLLaunchDescriptionSource 
+from launch_xml.launch_description_sources import XMLLaunchDescriptionSource
 from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
@@ -18,37 +17,41 @@ def generate_launch_description():
             os.path.join(get_package_share_directory('rtabmap_launch'), 'launch', 'rtabmap.launch.py')
         ]),
         launch_arguments={
-            'rtabmap_args': '--delete_db_on_start', # Start fresh map every time
+            'rtabmap_args': '--delete_db_on_start',
             'frame_id': 'base_link',
-            'odom_topic': '/odom', # Use MAVROS odometry
-            'visual_odometry': 'false', # Use simulation/wheel odometry instead
+            'odom_topic': '/odom',
+            'visual_odometry': 'false',
             'subscribe_depth': 'true',
             'approx_sync': 'true',
             'wait_for_transform': '0.2',
             'qos': '1',
+            'use_sim_time': 'true',
             'rgb_topic': '/zed/zed_node/left/image_rect_color',
             'depth_topic': '/zed/zed_node/depth/depth_registered',
             'camera_info_topic': '/zed/zed_node/left/camera_info',
         }.items()
     )
 
-    # --- 3. Nav2 (Navigation Stack) ---
-    # Remap Nav2 output to /auto/cmd_vel so State Manager can control it
-    nav2_launch = GroupAction([
-        SetRemap(src='/cmd_vel', dst='/auto/cmd_vel'),
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource([
-                os.path.join(get_package_share_directory('nav2_bringup'), 'launch', 'navigation_launch.py')
-            ]),
-            launch_arguments={
-                'use_sim_time': use_sim_time,
-                'autostart': 'true',
-                'params_file': os.path.join(get_package_share_directory(pkg_name), 'config', 'nav2_params.yaml')
-            }.items()
-        )
-    ])
+    # --- 2. Nav2 (Navigation Stack) ---
+    # Now uses nav2_params.yaml from THIS package (rado_control_3)
+    nav2_config_path = '/home/neel/ros2_ws/src/Main_Control/rado_control_3/config/nav2_params.yaml'
     
-    # --- UPDATED ROSBRIDGE BLOCK ---
+    # Debug: Print the params file path
+    print(f"[DEBUG] Nav2 params_file: {nav2_config_path}")
+    
+    nav2_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            os.path.join(get_package_share_directory('nav2_bringup'), 'launch', 'navigation_launch.py')
+        ]),
+        launch_arguments={
+            'use_sim_time': 'true',
+            'autostart': 'true',
+            'slam': 'false',
+            'params_file': nav2_config_path,
+        }.items()
+    )
+    
+    # --- 3. ROS Bridge ---
     rosbridge = IncludeLaunchDescription(
         XMLLaunchDescriptionSource([
             os.path.join(get_package_share_directory('rosbridge_server'), 'launch', 'rosbridge_websocket_launch.xml')
@@ -56,50 +59,58 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        # --- Navigation Stack ---
+        # Navigation Stack
         rtabmap_launch,
         nav2_launch,
 
-        # 1. The Bridge (Port 9090)
+        # Web Interface
         rosbridge,
-
-        # 2. Video Streamer (Port 8080)
         Node(
             package='web_video_server',
             executable='web_video_server',
             name='web_video_server'
         ),
 
-        # 3. System Monitor (The Doctor)
+        # Control Nodes
         Node(
             package=pkg_name,
             executable='system_monitor_node.py',
             name='system_monitor'
         ),
 
-        # 4. Joystick
+        # Joystick Control
         Node(package='joy', executable='joy_node', name='joy_node'),
-        Node(package='teleop_twist_joy', executable='teleop_node', name='teleop_node',
-             remappings=[('/cmd_vel', '/manual/cmd_vel')]),
+        Node(
+            package='teleop_twist_joy',
+            executable='teleop_node',
+            name='teleop_node',
+            remappings=[('/cmd_vel', '/manual/cmd_vel')]
+        ),
 
-        # 5. State Manager
+        # State Manager
         Node(
             package=pkg_name,
             executable='state_manager_node.py',
             name='state_manager'
         ),
 
-        # 6. Coordinate Follower (Mission Manager)
+        # Coordinate Follower (Mission Manager with Nav2)
         Node(
             package=pkg_name,
-            executable='nav2_coordinate_follower.py',
-            name='coordinate_follower'
+            executable='coordinate_follower_node.py',
+            name='coordinate_follower',
+            parameters=[{
+                'use_sim_time': use_sim_time,
+                'map_frame': 'map',
+                'gps_origin_lat': 0.0,  # SET YOUR MAP ORIGIN
+                'gps_origin_lon': 0.0   # SET YOUR MAP ORIGIN
+            }]
         ),
 
-        # 7. Cone Follower (Vision Pilot)
+        # Cone Follower (Vision-based final approach)
         Node(
             package=pkg_name,
             executable='cone_follower_node.py',
             name='cone_follower'
-        )
+        ),
     ])

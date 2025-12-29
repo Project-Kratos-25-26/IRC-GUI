@@ -1,18 +1,39 @@
 #!/usr/bin/env python3
+"""
+Mission Manager with Nav2 Integration
+Converts GPS waypoints to map coordinates and sends goals to Nav2
+Falls back to cone following for final approach
+"""
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
-from std_msgs.msg import String, Bool, Float64
-from geometry_msgs.msg import Twist
+from rclpy.action import ActionClient
+from rclpy.duration import Duration
+from std_msgs.msg import String
+from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import NavSatFix
+from nav2_msgs.action import NavigateToPose
+from tf2_ros import Buffer, TransformListener
+from tf2_geometry_msgs import do_transform_pose
 import os
 import time
 import math
 from pathlib import Path
 
+
 class MissionManager(Node):
     def __init__(self):
-        super().__init__('coordinate_follower')
+        super().__init__('mission_manager')
+
+        # Parameters
+        self.declare_parameter('map_frame', 'map')
+        self.declare_parameter('base_frame', 'base_link')
+        self.declare_parameter('gps_origin_lat', 0.0)  # Set your map origin
+        self.declare_parameter('gps_origin_lon', 0.0)  # Set your map origin
+        
+        self.map_frame = self.get_parameter('map_frame').value
+        self.base_frame = self.get_parameter('base_frame').value
+        self.gps_origin_lat = self.get_parameter('gps_origin_lat').value
+        self.gps_origin_lon = self.get_parameter('gps_origin_lon').value
 
         # State machine
         self.internal_state = 'IDLE'
@@ -25,37 +46,67 @@ class MissionManager(Node):
         self.current_lon = 0.0
         self.current_heading = 0.0
         
-        # --- TUNING PARAMETERS (SAFE MODE) ---
-        self.gps_tolerance = 2.0  # Meters (Radius to switch to cone)
-        self.kp_heading = 0.05    # Higher = Stiffer turning
-        self.kp_dist = 0.5        # Speed proportional to distance
-        self.max_speed = 0.4      # Slower max speed for testing
-        self.stop_turn_threshold = 10.0 # Degrees. If error > this, STOP and turn.
-        # -------------------------------------
+        # --- TUNING PARAMETERS ---
+        self.cone_switch_distance = 3.0  # Meters - when to switch from Nav2 to cone following
+        self.nav2_goal_tolerance = 2.0   # Nav2 goal tolerance
+        self.nav2_timeout = 300.0        # Nav2 navigation timeout (seconds)
+        # -------------------------
 
         # Path Setup
         home = str(Path.home())
-        self.mission_file_path = os.path.join(home, 'ros2_ws/src/Main_Control/rado_control_3/config/mission_plan.txt')
+        self.mission_file_path = os.path.join(
+            home, 'ros2_ws/src/Main_Control/rado_control_3/config/mission_plan.txt'
+        )
+
+        # TF2 Setup
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
 
         # Publishers
-        self.velocity_pub = self.create_publisher(Twist, '/auto/cmd_vel', 10)
-        self.cone_trigger_pub = self.create_publisher(String, '/auto/cone_follow/trigger', 10)
+        self.cone_trigger_pub = self.create_publisher(
+            String, '/auto/cone_follow/trigger', 10
+        )
 
         # Subscribers
-        self.create_subscription(String, '/rover_state', self.state_callback, 10)
-        self.create_subscription(String, '/gcs/command', self.gcs_command_callback, 10)
-        self.create_subscription(NavSatFix, '/mavros/global_position/global', self.gps_callback, 10)
-        
-        # Note: Changed to standard QoS 10 to ensure we hear the bridge
-        self.create_subscription(Float64, '/mavros/global_position/compass_hdg', self.heading_callback, 10)
-        self.create_subscription(String, '/auto/cone_follow/status', self.cone_status_callback, 10)
+        self.create_subscription(
+            String, '/rover_state', self.state_callback, 10
+        )
+        self.create_subscription(
+            String, '/gcs/command', self.gcs_command_callback, 10
+        )
+        self.create_subscription(
+            NavSatFix, '/mavros/global_position/global', self.gps_callback, 10
+        )
+        self.create_subscription(
+            String, '/auto/cone_follow/status', self.cone_status_callback, 10
+        )
 
-        self.timer = self.create_timer(0.1, self.control_loop)
+        # Nav2 Action Client
+        self.nav2_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
+        self.nav2_goal_handle = None
+
+        # Timer
+        self.timer = self.create_timer(0.2, self.control_loop)
+        
+        # Load mission and wait for Nav2
         self.load_mission()
         self.internal_state = 'WAITING_FOR_PROCEED'
-        self.get_logger().info('Mission Manager Initialized (Safe Mode).')
+        
+        self.get_logger().info('Mission Manager (Nav2 Integrated) Initialized.')
+        self.get_logger().info(f'Loaded {len(self.mission_goals)} mission goals.')
+        
+        # Wait for Nav2 action server
+        self.create_timer(1.0, self.check_nav2_ready)
+
+    def check_nav2_ready(self):
+        """Check if Nav2 action server is available"""
+        if not self.nav2_client.server_is_ready():
+            self.get_logger().info('Waiting for Nav2 action server...', throttle_duration_sec=5)
+        else:
+            self.get_logger().info('Nav2 action server is ready!')
 
     def load_mission(self):
+        """Load mission waypoints from file"""
         self.mission_goals = []
         try:
             if os.path.exists(self.mission_file_path):
@@ -71,24 +122,33 @@ class MissionManager(Node):
                                     'lon': float(parts[3])
                                 }
                                 self.mission_goals.append(goal)
-                            except ValueError:
-                                pass
-            self.get_logger().info(f'Loaded {len(self.mission_goals)} goals.')
+                            except ValueError as e:
+                                self.get_logger().warn(f'Invalid line in mission file: {line}')
+            else:
+                self.get_logger().error(f'Mission file not found: {self.mission_file_path}')
         except Exception as e:
             self.get_logger().error(f'Failed to load mission: {e}')
 
     def gcs_command_callback(self, msg):
+        """Handle commands from ground control station"""
         command = msg.data.upper().strip()
+        
         if command == 'PROCEED':
             if self.internal_state == 'WAITING_FOR_PROCEED':
                 self.select_next_goal()
         elif command == 'MANUAL':
             self.internal_state = 'WAITING_FOR_PROCEED'
-            self.stop_rover()
+            self.cancel_nav2_goal()
             self.cone_trigger_pub.publish(String(data="STOP"))
+        elif command == 'CANCEL':
+            self.cancel_nav2_goal()
+            self.internal_state = 'WAITING_FOR_PROCEED'
 
     def select_next_goal(self):
+        """Select the next goal in mission sequence"""
         next_goal = None
+        
+        # If we just completed a pickup, find matching dropoff
         if self.current_goal and self.current_goal['type'] == 'pickup':
             color = self.current_goal['color']
             for g in self.mission_goals:
@@ -96,6 +156,7 @@ class MissionManager(Node):
                     next_goal = g
                     break
         else:
+            # Find next pickup
             start_search = self.current_goal_index + 1
             for i in range(start_search, len(self.mission_goals)):
                 if self.mission_goals[i]['type'] == 'pickup':
@@ -105,115 +166,214 @@ class MissionManager(Node):
         
         if next_goal:
             self.current_goal = next_goal
-            self.get_logger().info(f"Selected Goal: {next_goal['type']} {next_goal['color']}")
+            self.get_logger().info(
+                f"Selected Goal: {next_goal['type']} {next_goal['color']} "
+                f"at ({next_goal['lat']:.6f}, {next_goal['lon']:.6f})"
+            )
             self.internal_state = 'WAITING_FOR_AUTONOMOUS'
         else:
-            self.get_logger().info("No more goals found.")
+            self.get_logger().info("No more goals found. Mission complete!")
             self.internal_state = 'IDLE'
 
     def state_callback(self, msg):
+        """Handle rover state changes"""
         state = msg.data.upper().strip()
+        
         if state == 'AUTONOMOUS' and self.internal_state == 'WAITING_FOR_AUTONOMOUS':
-            self.internal_state = 'GPS_NAVIGATING'
-            self.get_logger().info("Starting GPS Navigation...")
+            self.internal_state = 'NAV2_NAVIGATING'
+            self.send_nav2_goal()
         elif state == 'MANUAL':
-            if self.internal_state in ['GPS_NAVIGATING', 'CONE_NAVIGATING']:
+            if self.internal_state in ['NAV2_NAVIGATING', 'CONE_NAVIGATING']:
                 self.internal_state = 'WAITING_FOR_PROCEED'
+                self.cancel_nav2_goal()
                 self.cone_trigger_pub.publish(String(data="STOP"))
 
     def gps_callback(self, msg):
+        """Update current GPS position"""
         self.current_lat = msg.latitude
         self.current_lon = msg.longitude
 
-    def heading_callback(self, msg):
-        self.current_heading = msg.data
-
     def cone_status_callback(self, msg):
+        """Handle cone following status updates"""
         if self.internal_state == 'CONE_NAVIGATING' and msg.data == 'SUCCESS':
             self.handle_arrival()
 
+    def gps_to_map_coords(self, lat, lon):
+        """
+        Convert GPS coordinates to map coordinates
+        Uses simple equirectangular projection relative to origin
+        For better accuracy, consider using robot_localization or a proper UTM converter
+        """
+        # If no origin set, log warning
+        if self.gps_origin_lat == 0.0 and self.gps_origin_lon == 0.0:
+            self.get_logger().warn(
+                'GPS origin not set! Using (0,0). Set gps_origin_lat and gps_origin_lon parameters.',
+                throttle_duration_sec=5
+            )
+        
+        # Earth radius in meters
+        R = 6371000.0
+        
+        # Convert to radians
+        lat_rad = math.radians(lat)
+        origin_lat_rad = math.radians(self.gps_origin_lat)
+        
+        # Calculate differences
+        dlat = lat - self.gps_origin_lat
+        dlon = lon - self.gps_origin_lon
+        
+        # Convert to meters (equirectangular approximation)
+        x = R * math.radians(dlon) * math.cos(origin_lat_rad)
+        y = R * math.radians(dlat)
+        
+        return x, y
+
+    def send_nav2_goal(self):
+        """Send navigation goal to Nav2"""
+        if not self.nav2_client.server_is_ready():
+            self.get_logger().error('Nav2 action server not available!')
+            self.internal_state = 'WAITING_FOR_PROCEED'
+            return
+
+        # Convert GPS to map coordinates
+        x, y = self.gps_to_map_coords(
+            self.current_goal['lat'],
+            self.current_goal['lon']
+        )
+
+        # Create Nav2 goal
+        goal_msg = NavigateToPose.Goal()
+        goal_msg.pose.header.frame_id = self.map_frame
+        goal_msg.pose.header.stamp = self.get_clock().now().to_msg()
+        goal_msg.pose.pose.position.x = x
+        goal_msg.pose.pose.position.y = y
+        goal_msg.pose.pose.position.z = 0.0
+        
+        # Orientation (quaternion for yaw=0, can be calculated based on approach direction)
+        goal_msg.pose.pose.orientation.w = 1.0
+
+        self.get_logger().info(
+            f'Sending Nav2 goal to map coords: ({x:.2f}, {y:.2f})'
+        )
+
+        # Send goal
+        send_goal_future = self.nav2_client.send_goal_async(
+            goal_msg,
+            feedback_callback=self.nav2_feedback_callback
+        )
+        send_goal_future.add_done_callback(self.nav2_goal_response_callback)
+
+    def nav2_goal_response_callback(self, future):
+        """Handle Nav2 goal acceptance/rejection"""
+        self.nav2_goal_handle = future.result()
+        
+        if not self.nav2_goal_handle.accepted:
+            self.get_logger().error('Nav2 goal was rejected!')
+            self.internal_state = 'WAITING_FOR_PROCEED'
+            return
+
+        self.get_logger().info('Nav2 goal accepted, navigating...')
+        
+        # Get result asynchronously
+        result_future = self.nav2_goal_handle.get_result_async()
+        result_future.add_done_callback(self.nav2_result_callback)
+
+    def nav2_feedback_callback(self, feedback_msg):
+        """Handle Nav2 navigation feedback"""
+        feedback = feedback_msg.feedback
+        
+        # Calculate distance to goal
+        if self.current_goal:
+            dist, _ = self.get_distance_bearing(
+                self.current_lat, self.current_lon,
+                self.current_goal['lat'], self.current_goal['lon']
+            )
+            
+            self.get_logger().info(
+                f'Nav2 feedback - Distance remaining: {dist:.2f}m',
+                throttle_duration_sec=2
+            )
+            
+            # Switch to cone following when close enough
+            if dist < self.cone_switch_distance:
+                self.get_logger().info(
+                    f'Within {dist:.2f}m. Canceling Nav2, switching to CONE FOLLOW.'
+                )
+                self.cancel_nav2_goal()
+                self.internal_state = 'CONE_NAVIGATING'
+                self.cone_trigger_pub.publish(String(data=self.current_goal['color']))
+
+    def nav2_result_callback(self, future):
+        """Handle Nav2 navigation result"""
+        result = future.result().result
+        status = future.result().status
+        
+        if status == 4:  # SUCCEEDED
+            self.get_logger().info('Nav2 navigation succeeded!')
+            # Switch to cone following for final approach
+            self.internal_state = 'CONE_NAVIGATING'
+            self.cone_trigger_pub.publish(String(data=self.current_goal['color']))
+        elif status == 5:  # CANCELED
+            self.get_logger().info('Nav2 navigation was canceled')
+        else:
+            self.get_logger().error(f'Nav2 navigation failed with status: {status}')
+            self.internal_state = 'WAITING_FOR_PROCEED'
+
+    def cancel_nav2_goal(self):
+        """Cancel current Nav2 navigation goal"""
+        if self.nav2_goal_handle is not None:
+            self.get_logger().info('Canceling Nav2 goal...')
+            cancel_future = self.nav2_goal_handle.cancel_goal_async()
+            self.nav2_goal_handle = None
+
     def handle_arrival(self):
-        self.stop_rover()
-        self.get_logger().info(f"Arrived at {self.current_goal['type']} ({self.current_goal['color']})")
+        """Handle arrival at goal location"""
+        self.get_logger().info(
+            f"Arrived at {self.current_goal['type']} ({self.current_goal['color']})"
+        )
+        
         if self.current_goal['type'] == 'pickup':
             self.internal_state = 'WAITING_FOR_PROCEED'
         elif self.current_goal['type'] == 'dropoff':
             self.internal_state = 'DROPOFF_ACTION'
             self.dropoff_start_time = time.time()
 
-    def stop_rover(self):
-        self.velocity_pub.publish(Twist())
-
     def get_distance_bearing(self, lat1, lon1, lat2, lon2):
-        R = 6371000
+        """Calculate distance and bearing between two GPS coordinates"""
+        R = 6371000  # Earth radius in meters
+        
         phi1 = math.radians(lat1)
         phi2 = math.radians(lat2)
         dphi = math.radians(lat2 - lat1)
         dlambda = math.radians(lon2 - lon1)
-        a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2) * math.sin(dlambda/2)**2
+        
+        # Haversine formula
+        a = (math.sin(dphi/2)**2 + 
+             math.cos(phi1) * math.cos(phi2) * math.sin(dlambda/2)**2)
         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
         dist = R * c
+        
+        # Bearing calculation
         y = math.sin(dlambda) * math.cos(phi2)
-        x = math.cos(phi1)*math.sin(phi2) - math.sin(phi1)*math.cos(phi2)*math.cos(dlambda)
+        x = (math.cos(phi1) * math.sin(phi2) - 
+             math.sin(phi1) * math.cos(phi2) * math.cos(dlambda))
         bearing = math.degrees(math.atan2(y, x))
+        
         return dist, (bearing + 360) % 360
 
     def control_loop(self):
-        if self.internal_state == 'GPS_NAVIGATING':
-            # Check for valid GPS
-            if self.current_lat == 0.0 and self.current_lon == 0.0:
-                self.get_logger().warn("Waiting for valid GPS fix...", throttle_duration_sec=2)
-                return
-
-            dist, target_bearing = self.get_distance_bearing(
-                self.current_lat, self.current_lon,
-                self.current_goal['lat'], self.current_goal['lon']
-            )
-
-            # Calculate Error
-            heading_error = target_bearing - self.current_heading
-            if heading_error > 180: heading_error -= 360
-            if heading_error < -180: heading_error += 360
-
-            # --- BETTER LOGGING ---
-            self.get_logger().info(
-                f"Dist={dist:.1f}m | TgtBear={target_bearing:.0f} | CurHdg={self.current_heading:.0f} | Err={heading_error:.0f}", 
-                throttle_duration_sec=0.5
-            )
-
-            # Check Arrival
-            if dist < self.gps_tolerance:
-                self.internal_state = 'CONE_NAVIGATING'
-                self.stop_rover()
-                self.get_logger().info(f"Within {dist:.2f}m. Switching to CONE FOLLOW.")
-                self.cone_trigger_pub.publish(String(data=self.current_goal['color']))
-                return
-
-            twist = Twist()
-            
-            # --- STEERING LOGIC ---
-            # Negative sign because Positive Error (Right) needs Negative Angular Z (Right Turn)
-            twist.angular.z = -1.0 * (heading_error * self.kp_heading)
-            
-            # Cap angular velocity for safety
-            twist.angular.z = max(min(twist.angular.z, 0.8), -0.8)
-
-            # --- THROTTLE LOGIC ---
-            # If error is large (>10 deg), SPIN IN PLACE. Do not drive forward.
-            if abs(heading_error) > self.stop_turn_threshold:
-                twist.linear.x = 0.0
-            else:
-                twist.linear.x = min(self.max_speed, dist * self.kp_dist)
-                
-            self.velocity_pub.publish(twist)
-
-        elif self.internal_state == 'DROPOFF_ACTION':
+        """Main control loop"""
+        if self.internal_state == 'DROPOFF_ACTION':
+            # Wait for dropoff action to complete (e.g., 5 seconds)
             if time.time() - self.dropoff_start_time > 5.0:
+                self.get_logger().info('Dropoff complete. Proceeding to next goal.')
                 self.select_next_goal()
+
 
 def main(args=None):
     rclpy.init(args=args)
     node = MissionManager()
+    
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
@@ -221,6 +381,7 @@ def main(args=None):
     finally:
         node.destroy_node()
         rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()
