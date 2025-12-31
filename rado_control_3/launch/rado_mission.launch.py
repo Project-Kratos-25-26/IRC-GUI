@@ -1,32 +1,98 @@
-# mission_only.launch.py
+import os
 from launch import LaunchDescription
 from launch_ros.actions import Node
+from launch.actions import IncludeLaunchDescription
+from launch_xml.launch_description_sources import XMLLaunchDescriptionSource
+from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
-    return LaunchDescription([
-        Node(
-            package='rado_control_3',
-            executable='system_monitor_node.py',
-            name='system_monitor'
-        ),
-        Node(
-            package='rado_control_3',
-            executable='state_manager_node.py',
-            name='state_manager'
-        ),
-        Node(
-            package='rado_control_3',
-            executable='coordinate_follower_node.py',
-            name='mission_manager',
-            parameters=[
-                {'use_sim_time': True},
-                {'map_frame': 'map'}
-            ]
-        ),
-        Node(
-            package='rado_control_3',
-            executable='cone_follower_node.py',
-            name='cone_follower'
+
+    pkg_name = 'rado_control_3'
+
+    # -------------------------
+    # Web GUI / Remote Interface
+    # -------------------------
+
+    rosbridge = IncludeLaunchDescription(
+        XMLLaunchDescriptionSource(
+            os.path.join(
+                get_package_share_directory('rosbridge_server'),
+                'launch',
+                'rosbridge_websocket_launch.xml'
+            )
         )
+    )
+
+    web_video = Node(
+        package='web_video_server',
+        executable='web_video_server',
+        name='web_video_server',
+        output='screen'
+    )
+
+    # -------------------------
+    # Mission / Control Nodes
+    # -------------------------
+
+    system_monitor = Node(
+        package=pkg_name,
+        executable='system_monitor_node.py',
+        name='system_monitor',
+        output='screen'
+    )
+
+    state_manager = Node(
+        package=pkg_name,
+        executable='state_manager_node.py',
+        name='state_manager',
+        output='screen'
+    )
+
+    coordinate_follower = Node(
+        package=pkg_name,
+        executable='coordinate_follower_node.py',
+        name='coordinate_follower',
+        output='screen',
+        parameters=[
+            {'use_sim_time': True},
+            {'map_frame': 'map'},
+            {'gps_origin_lat': 0.0},   # set as needed
+            {'gps_origin_lon': 0.0}
+        ]
+    )
+
+    cone_follower = Node(
+        package=pkg_name,
+        executable='cone_follower_node.py',
+        name='cone_follower',
+        output='screen'
+    )
+    Node(
+    package='joy',
+    executable='joy_node',
+    name='joy_node',
+    output='screen'
+),
+
+Node(
+    package='teleop_twist_joy',
+    executable='teleop_node',
+    name='teleop_node',
+    output='screen',
+    remappings=[('/cmd_vel', '/manual/cmd_vel')]
+),
+
+
+    return LaunchDescription([
+        # Web GUI
+        rosbridge,
+        web_video,
+
+        # Mission stack
+        system_monitor,
+        state_manager,
+        coordinate_follower,
+        cone_follower,
     ])
 
+    
