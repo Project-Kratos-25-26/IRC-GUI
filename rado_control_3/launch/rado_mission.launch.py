@@ -67,6 +67,21 @@ def generate_launch_description():
         name='cone_follower',
         output='screen'
     )
+    Node(
+        package='joy',
+        executable='joy_node',
+        name='joy_node',
+        output='screen'
+    ),
+
+    Node(
+        package='teleop_twist_joy',
+        executable='teleop_node',
+        name='teleop_node',
+        output='screen',
+        remappings=[('/cmd_vel', '/manual/cmd_vel')]
+    ),
+
 
     return LaunchDescription([
         # Web GUI
@@ -79,3 +94,5 @@ def generate_launch_description():
         coordinate_follower,
         cone_follower,
     ])
+
+    
