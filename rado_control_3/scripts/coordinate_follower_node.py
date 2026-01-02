@@ -47,7 +47,7 @@ class MissionManager(Node):
         self.current_heading = 0.0
         
         # --- TUNING PARAMETERS ---
-        self.cone_switch_distance = 3.0  # Meters - when to switch from Nav2 to cone following
+        self.cone_switch_distance = 0.5  # Meters - when to switch from Nav2 to cone following
         self.nav2_goal_tolerance = 2.0   # Nav2 goal tolerance
         self.nav2_timeout = 300.0        # Nav2 navigation timeout (seconds)
         # -------------------------
@@ -223,8 +223,8 @@ class MissionManager(Node):
         dlon = lon - self.gps_origin_lon
         
         # Convert to meters (equirectangular approximation)
-        x = R * math.radians(dlon) * math.cos(origin_lat_rad)
-        y = R * math.radians(dlat)
+        x = -1.0 * (R * math.radians(dlon) * math.cos(origin_lat_rad))
+        y = -1.0 * (R * math.radians(dlat))
         
         return x, y
 
