@@ -280,9 +280,6 @@ class MissionManager(Node):
 
     def nav2_feedback_callback(self, feedback_msg):
         """Handle Nav2 navigation feedback"""
-        feedback = feedback_msg.feedback
-        
-        # Calculate distance to goal
         if self.current_goal:
             dist, _ = self.get_distance_bearing(
                 self.current_lat, self.current_lon,
@@ -293,15 +290,6 @@ class MissionManager(Node):
                 f'Nav2 feedback - Distance remaining: {dist:.2f}m',
                 throttle_duration_sec=2
             )
-            
-            # Switch to cone following when close enough
-            if dist < self.cone_switch_distance:
-                self.get_logger().info(
-                    f'Within {dist:.2f}m. Canceling Nav2, switching to CONE FOLLOW.'
-                )
-                self.cancel_nav2_goal()
-                self.internal_state = 'CONE_NAVIGATING'
-                self.cone_trigger_pub.publish(String(data=self.current_goal['color']))
 
     def nav2_result_callback(self, future):
         """Handle Nav2 navigation result"""
