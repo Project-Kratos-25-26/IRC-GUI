@@ -65,16 +65,36 @@ function sendArmPreset(pose) {
 // --- HEALTH DISPLAY ---
 window.renderHealth = function(data) {
     const list = document.getElementById('health-list');
+    if(!list) return;
+
+    // Clear previous content
     let html = "";
     
-    for(const [k, v] of Object.entries(data.pings)) {
-        html += `<div class="health-row"><span>${k}</span><span class="${v?'health-ok':'health-err'}">${v?'ONLINE':'OFFLINE'}</span></div>`;
+    // Check if pings data exists
+    if(data.pings) {
+        // Sort keys so 'JETSON' or 'RASPI' always appear in same order
+        const keys = Object.keys(data.pings).sort();
+        
+        for(const k of keys) {
+            const isOnline = data.pings[k]; // true or false
+            
+            // Determine class and text
+            const statusClass = isOnline ? 'health-ok' : 'health-err';
+            const statusText = isOnline ? 'ONLINE 🟢' : 'OFFLINE 🔴';
+            
+            // Build Row
+            html += `
+            <div class="health-row">
+                <span>${k}</span>
+                <span class="${statusClass}">${statusText}</span>
+            </div>`;
+        }
+    } else {
+        html = `<div class="health-row"><span>No Ping Data Received</span></div>`;
     }
-    for(const [k, v] of Object.entries(data.topics)) {
-        html += `<div class="health-row"><span>${k}</span><span class="${v=='OK'?'health-ok':'health-err'}">${v}</span></div>`;
-    }
+
     list.innerHTML = html;
-}
+};
 
 function addMissionLog(text) {
     const ul = document.getElementById('mission-log');
