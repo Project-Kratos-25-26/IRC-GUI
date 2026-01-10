@@ -1,7 +1,0 @@
-[INFO] [1768066616.985751575] [web_video_server]: Waiting For connections on 0.0.0.0:8080
-[INFO] [1768066618.767875747] [web_video_server]: Handling Request: /stream?topic=/camera/image_raw
-[INFO] [1768066618.768213322] [web_video_server]: Streaming topic /camera/image_raw with QoS profile default
-[INFO] [1768066618.985886404] [web_video_server]: Removed Stream: /camera/image_raw
-[INFO] [1768066619.764695980] [web_video_server]: Handling Request: /stream?topic=/zed/zed_node/rgb/image_rect_color&type=mjpeg&quality=50
-[INFO] [1768066619.764887424] [web_video_server]: Streaming topic /zed/zed_node/rgb/image_rect_color with QoS profile default
-[INFO] [1768066619.985868228] [web_video_server]: Removed Stream: /zed/zed_node/rgb/image_rect_color

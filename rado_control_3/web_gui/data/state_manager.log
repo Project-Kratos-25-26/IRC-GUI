@@ -1,7 +1,0 @@
-[INFO] [1768066617.138318639] [state_manager]: State Manager (with Mux Logic) is running.
-[INFO] [1768066719.055234263] [state_manager]: System Initialized: Switched to MANUAL state
-[INFO] [1768066728.275366277] [state_manager]: Switched to AUTONOMOUS state
-[INFO] [1768066944.354740042] [state_manager]: System Initialized: Switched to MANUAL state
-[INFO] [1768066950.692104879] [state_manager]: Switched to AUTONOMOUS state
-[INFO] [1768067030.123129147] [state_manager]: System Initialized: Switched to MANUAL state
-[INFO] [1768067039.687560686] [state_manager]: Switched to AUTONOMOUS state

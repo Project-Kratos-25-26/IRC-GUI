@@ -23,22 +23,22 @@ ros2 run joy joy_node --ros-args \
   -p device_name:="Thrustmaster T.Flight Hotas One" \
   > "data/joy0.log" 2>&1 &
 
-🕹️ Node 2: Sony Wireless Controller
+# 🕹️ Node 2: Sony Wireless Controller
 ros2 run joy joy_node --ros-args \
   -r __node:=joy \
   -p device_name:="Sony Interactive Entertainment Wireless Controller" \
   > "data/joy.log" 2>&1 &
 
 
-# 3. Start Nodes using ros2 run (Works in both Source and Install if sourced)
+# 3. Start Nodes (Running directly from source for local dev)
 echo "[LOCAL] Starting Telemetry Bridge..."
-ros2 run rado_control_3 telemetry_bridge_node.py > "data/bridge.log" 2>&1 &
+python3 scripts/telemetry_bridge_node.py > "data/bridge.log" 2>&1 &
 
 echo "[LOCAL] Starting GUI Backend..."
-ros2 run rado_control_3 gui_backend_node.py > "data/backend.log" 2>&1 &
+python3 scripts/gui_backend_node.py > "data/backend.log" 2>&1 &
 
 echo "[LOCAL] Starting State Manager..."
-ros2 run rado_control_3 state_manager_node.py > "data/state_manager.log" 2>&1 &
+python3 ../scripts/state_manager_node.py > "data/state_manager.log" 2>&1 &
 
 # 2.2 Start Rosbridge (Essential for Web Communication)
 echo "[LOCAL] Starting Rosbridge..."

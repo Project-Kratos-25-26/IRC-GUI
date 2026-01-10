@@ -76,6 +76,8 @@ class GuiBackend(Node):
             self.run_script('switch_mode.sh', ['keyboard'])
         elif cmd == 'restart_mavros':
             self.get_logger().warn("Restart MAVROS not fully implemented in backend yet.")
+        elif cmd == 'init_mission':
+            self.run_script('start_mission.sh')
 
     def log_callback(self, msg):
         try:

@@ -116,7 +116,6 @@ def generate_launch_description():
         system_monitor,
         state_manager,
         coordinate_follower,
-        coordinate_follower,
         cone_follower,
         joy_node_ps5,
         joy_node_thrustmaster,
