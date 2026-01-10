@@ -31,7 +31,7 @@ function sendCmd(cmd) {
 
 function sendSysCommand(cmd) {
     // Blocking check for init and mode commands
-    const blockedCmds = ['init_drive', 'init_ld', 'manual_mode', 'auto_mode'];
+    const blockedCmds = ['init_drive', 'init_ld', 'init_arm', 'manual_mode', 'auto_mode'];
     if (blockedCmds.includes(cmd) && raspiStatus !== 'ONLINE') {
         alert("Cannot Execute: Raspberry Pi is OFFLINE!");
         // Revert radio button if needed (simple fix: user sees alert, radio stays checked but cmd not sent. acceptable for now)

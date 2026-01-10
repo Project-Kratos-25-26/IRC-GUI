@@ -1,4 +1,2 @@
-[INFO] [1768054808.670463985] [gui_backend]: Dev Mode: Found source mission_plan at /home/supersniper/ros2_ws/src/Main_Control/rado_control_3/config/mission_plan.txt
-[INFO] [1768054808.670798763] [gui_backend]: GUI Backend Node Started. Listening on /sys/command. Logging to: /home/supersniper/ros2_ws/src/Main_Control/rado_control_3/config/mission_plan.txt
-[INFO] [1768054817.233760627] [gui_backend]: Logged to Mission Plan: pickup,green,0.00,0.00 -> /home/supersniper/ros2_ws/src/Main_Control/rado_control_3/config/mission_plan.txt
-[INFO] [1768054819.621589620] [gui_backend]: Logged to Mission Plan: pickup,blue,0.00,0.00 -> /home/supersniper/ros2_ws/src/Main_Control/rado_control_3/config/mission_plan.txt
+[INFO] [1768063509.430167565] [gui_backend]: Dev Mode: Found source mission_plan at /home/supersniper/ros2_ws/src/Main_Control/rado_control_3/config/mission_plan.txt
+[INFO] [1768063509.430448728] [gui_backend]: GUI Backend Node Started. Listening on /sys/command. Logging to: /home/supersniper/ros2_ws/src/Main_Control/rado_control_3/config/mission_plan.txt

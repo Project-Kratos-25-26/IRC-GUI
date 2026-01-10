@@ -68,6 +68,8 @@ class GuiBackend(Node):
             self.run_script('start_drive.sh')
         elif cmd == 'init_ld':
             self.run_script('start_ld.sh')
+        elif cmd == 'init_arm':
+            self.run_script('start_arm.sh')
         elif cmd == 'manual_mode' or cmd == 'MANUAL':
             self.run_script('switch_mode.sh', ['thrustmaster'])
         elif cmd == 'auto_mode' or cmd == 'PROCEED':
