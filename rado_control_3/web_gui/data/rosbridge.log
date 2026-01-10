@@ -1,16 +1,16 @@
-[INFO] [launch]: All log files can be found below /home/supersniper/.ros/log/2026-01-10-22-15-09-300312-SuperSniper-18102
+[INFO] [launch]: All log files can be found below /home/supersniper/.ros/log/2026-01-10-23-06-56-918989-SuperSniper-49621
 [INFO] [launch]: Default logging verbosity is set to INFO
-[INFO] [rosbridge_websocket-1]: process started with pid [18219]
-[INFO] [rosapi_node-2]: process started with pid [18221]
-[rosbridge_websocket-1] [WARN] [1768063509.767223925] [rosbridge_websocket]: The 'default_call_service_timeout' parameter is currently set to 0.0, which means service calls will block indefinitely if no response is received. Please note that in the Jazzy and later releases, the default value for this parameter will be updated to 5.0 seconds.
-[rosbridge_websocket-1] [WARN] [1768063509.767504537] [rosbridge_websocket]: The 'call_services_in_new_thread' parameter is currently set to False, which means service calls will block the main thread. Please note that in the Jazzy and later releases, the default value for this parameter will be updated to True.
-[rosbridge_websocket-1] [WARN] [1768063509.767722494] [rosbridge_websocket]: The 'send_action_goals_in_new_thread' parameter is currently set to False, which means sending action goals will block the main thread. Please note that in the Jazzy and later releases, the default value for this parameter will be updated to True.
-[rosbridge_websocket-1] [INFO] [1768063509.768479458] [rosbridge_websocket]: Rosbridge WebSocket server started on port 9090
-[rosbridge_websocket-1] [INFO] [1768063510.872197440] [rosbridge_websocket]: Calling services in existing thread
-[rosbridge_websocket-1] [INFO] [1768063510.872530830] [rosbridge_websocket]: Sending action goals in existing thread
-[rosbridge_websocket-1] [INFO] [1768063510.873296148] [rosbridge_websocket]: Client connected. 1 clients total.
-[rosbridge_websocket-1] [INFO] [1768063510.885631285] [rosbridge_websocket]: [Client 1b11aca2-1bb0-407e-ae2b-46294b6392e6] Subscribed to /gui/system_health
-[rosbridge_websocket-1] [INFO] [1768063510.920640380] [rosbridge_websocket]: [Client 1b11aca2-1bb0-407e-ae2b-46294b6392e6] Subscribed to /joy0
-[rosbridge_websocket-1] [INFO] [1768063510.921535661] [rosbridge_websocket]: [Client 1b11aca2-1bb0-407e-ae2b-46294b6392e6] Subscribed to /joy
-[rosbridge_websocket-1] [INFO] [1768063510.922857220] [rosbridge_websocket]: [Client 1b11aca2-1bb0-407e-ae2b-46294b6392e6] Subscribed to /system/state
-[rosbridge_websocket-1] [INFO] [1768063510.924131819] [rosbridge_websocket]: [Client 1b11aca2-1bb0-407e-ae2b-46294b6392e6] Subscribed to /mavros/global_position/global
+[INFO] [rosbridge_websocket-1]: process started with pid [49728]
+[INFO] [rosapi_node-2]: process started with pid [49730]
+[rosbridge_websocket-1] [WARN] [1768066617.374049066] [rosbridge_websocket]: The 'default_call_service_timeout' parameter is currently set to 0.0, which means service calls will block indefinitely if no response is received. Please note that in the Jazzy and later releases, the default value for this parameter will be updated to 5.0 seconds.
+[rosbridge_websocket-1] [WARN] [1768066617.374318199] [rosbridge_websocket]: The 'call_services_in_new_thread' parameter is currently set to False, which means service calls will block the main thread. Please note that in the Jazzy and later releases, the default value for this parameter will be updated to True.
+[rosbridge_websocket-1] [WARN] [1768066617.374521042] [rosbridge_websocket]: The 'send_action_goals_in_new_thread' parameter is currently set to False, which means sending action goals will block the main thread. Please note that in the Jazzy and later releases, the default value for this parameter will be updated to True.
+[rosbridge_websocket-1] [INFO] [1768066617.375210909] [rosbridge_websocket]: Rosbridge WebSocket server started on port 9090
+[rosbridge_websocket-1] [INFO] [1768066619.582833806] [rosbridge_websocket]: Calling services in existing thread
+[rosbridge_websocket-1] [INFO] [1768066619.583158368] [rosbridge_websocket]: Sending action goals in existing thread
+[rosbridge_websocket-1] [INFO] [1768066619.583799779] [rosbridge_websocket]: Client connected. 1 clients total.
+[rosbridge_websocket-1] [INFO] [1768066619.585292755] [rosbridge_websocket]: [Client 66eae848-6916-4f85-bf46-22d828beac5c] Subscribed to /gui/system_health
+[rosbridge_websocket-1] [INFO] [1768066619.619210100] [rosbridge_websocket]: [Client 66eae848-6916-4f85-bf46-22d828beac5c] Subscribed to /joy0
+[rosbridge_websocket-1] [INFO] [1768066619.619952301] [rosbridge_websocket]: [Client 66eae848-6916-4f85-bf46-22d828beac5c] Subscribed to /joy
+[rosbridge_websocket-1] [INFO] [1768066619.620567084] [rosbridge_websocket]: [Client 66eae848-6916-4f85-bf46-22d828beac5c] Subscribed to /system/state
+[rosbridge_websocket-1] [INFO] [1768066619.621669750] [rosbridge_websocket]: [Client 66eae848-6916-4f85-bf46-22d828beac5c] Subscribed to /mavros/global_position/global

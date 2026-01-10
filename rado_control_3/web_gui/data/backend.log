@@ -1,2 +1,86 @@
-[INFO] [1768063509.430167565] [gui_backend]: Dev Mode: Found source mission_plan at /home/supersniper/ros2_ws/src/Main_Control/rado_control_3/config/mission_plan.txt
-[INFO] [1768063509.430448728] [gui_backend]: GUI Backend Node Started. Listening on /sys/command. Logging to: /home/supersniper/ros2_ws/src/Main_Control/rado_control_3/config/mission_plan.txt
+[INFO] [1768066617.043788877] [gui_backend]: Dev Mode: Found source mission_plan at /home/supersniper/ros2_ws/src/Main_Control/rado_control_3/config/mission_plan.txt
+[INFO] [1768066617.044307276] [gui_backend]: GUI Backend Node Started. Listening on /sys/command. Logging to: /home/supersniper/ros2_ws/src/Main_Control/rado_control_3/config/mission_plan.txt
+[INFO] [1768066719.055328131] [gui_backend]: Received command: init_drive
+[INFO] [1768066719.055658995] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_drive.sh
+Permission denied, please try again.
+[INFO] [1768066728.275473219] [gui_backend]: Received command: PROCEED
+[INFO] [1768066728.275955875] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/switch_mode.sh keyboard
+Switching to mode: keyboard
+[INFO] [1768066736.105714362] [gui_backend]: Received command: init_ld
+[INFO] [1768066736.106136920] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_ld.sh
+[INFO] [1768066768.886771491] [gui_backend]: Received command: init_arm
+[INFO] [1768066768.887379081] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_arm.sh
+[INFO] [1768066775.086772996] [gui_backend]: Received command: init_ld
+[INFO] [1768066775.087533431] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_ld.sh
+LD Control already running.
+[INFO] [1768066776.251878045] [gui_backend]: Received command: init_ld
+[INFO] [1768066776.252380416] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_ld.sh
+LD Control already running.
+[INFO] [1768066777.041120079] [gui_backend]: Received command: init_arm
+[INFO] [1768066777.041458456] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_arm.sh
+ARM Control already running.
+[INFO] [1768066785.391766361] [gui_backend]: Received command: init_arm
+[INFO] [1768066785.392256711] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_arm.sh
+[INFO] [1768066944.354742175] [gui_backend]: Received command: init_drive
+[INFO] [1768066944.355021737] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_drive.sh
+Permission denied, please try again.
+[INFO] [1768066950.692210518] [gui_backend]: Received command: PROCEED
+[INFO] [1768066950.692846520] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/switch_mode.sh keyboard
+Switching to mode: keyboard
+[INFO] [1768066955.579070426] [gui_backend]: Received command: init_ld
+[INFO] [1768066955.579339840] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_ld.sh
+[INFO] [1768066960.581141888] [gui_backend]: Received command: init_arm
+[INFO] [1768066960.581507524] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_arm.sh
+[INFO] [1768066962.570741693] [gui_backend]: Received command: init_arm
+[INFO] [1768066962.571098163] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_arm.sh
+ARM Control already running.
+[INFO] [1768066963.530248610] [gui_backend]: Received command: init_arm
+[INFO] [1768066963.530621259] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_arm.sh
+ARM Control already running.
+[INFO] [1768066963.769379950] [gui_backend]: Received command: init_arm
+[INFO] [1768066963.769635829] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_arm.sh
+ARM Control already running.
+[INFO] [1768066964.730472010] [gui_backend]: Received command: init_arm
+[INFO] [1768066964.730748226] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_arm.sh
+ARM Control already running.
+[INFO] [1768066975.821149633] [gui_backend]: Received command: init_ld
+[INFO] [1768066975.821654810] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_ld.sh
+LD Control already running.
+[INFO] [1768066976.912211737] [gui_backend]: Received command: init_ld
+[INFO] [1768066976.912689985] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_ld.sh
+LD Control already running.
+[INFO] [1768066978.019451590] [gui_backend]: Received command: init_arm
+[INFO] [1768066978.019718659] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_arm.sh
+[INFO] [1768067030.122740599] [gui_backend]: Received command: init_drive
+[INFO] [1768067030.123133835] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_drive.sh
+Permission denied, please try again.
+[INFO] [1768067039.687542924] [gui_backend]: Received command: PROCEED
+[INFO] [1768067039.687939816] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/switch_mode.sh keyboard
+Switching to mode: keyboard
+[INFO] [1768067051.329674785] [gui_backend]: Received command: init_ld
+[INFO] [1768067051.330281444] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_ld.sh
+[INFO] [1768067055.325460406] [gui_backend]: Received command: init_ld
+[INFO] [1768067055.325777836] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_ld.sh
+LD Control already running.
+[INFO] [1768067055.683943735] [gui_backend]: Received command: init_ld
+[INFO] [1768067055.684255455] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_ld.sh
+LD Control already running.
+[INFO] [1768067055.854402273] [gui_backend]: Received command: init_ld
+[INFO] [1768067055.854721326] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_ld.sh
+LD Control already running.
+[INFO] [1768067056.320903172] [gui_backend]: Received command: init_ld
+[INFO] [1768067056.321172446] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_ld.sh
+LD Control already running.
+[INFO] [1768067056.506750815] [gui_backend]: Received command: init_ld
+[INFO] [1768067056.507330386] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_ld.sh
+LD Control already running.
+[INFO] [1768067058.007279317] [gui_backend]: Received command: init_ld
+[INFO] [1768067058.007530839] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_ld.sh
+LD Control already running.
+[INFO] [1768067058.191145644] [gui_backend]: Received command: init_ld
+[INFO] [1768067058.191498989] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_ld.sh
+LD Control already running.
+[INFO] [1768067059.131329790] [gui_backend]: Received command: init_arm
+[INFO] [1768067059.131645698] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_arm.sh
+[INFO] [1768067122.226999381] [gui_backend]: Received command: init_ld
+[INFO] [1768067122.227596644] [gui_backend]: Executing: /home/supersniper/ros2_ws/install/rado_control_3/lib/rado_control_3/start_ld.sh

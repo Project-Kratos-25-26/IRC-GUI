@@ -1,91 +1,53 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -e
 
 RASPI_USER="kratos"
 RASPI_IP="192.168.1.16"
+PASS="kratos123"
+SESSION="rover_ui"
 
-# We log remote specific stuff here, but local joy logs are now handled by start_server.sh
-datadir="$(cd "$(dirname "$0")" && pwd)/../data"
+CMD_MICROROS="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyUSB1; exec bash'"
+CMD_ARM="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && export PYTHONUNBUFFERED=1 && ros2 run arm_controls arm_mapping; exec bash'"
 
-echo "[REMOTE] Connecting to Rover..."
+if ! tmux has-session -t $SESSION 2>/dev/null; then
+    /usr/bin/env bash $(dirname "$0")/start_drive.sh
+    sleep 1
+fi
 
-# -------------------------------
-# -------------------------------
-# 1. MICRO-ROS AGENT (Persistent)
-# -------------------------------
+if tmux list-panes -t $SESSION:0 -F "#{pane_title}" | grep -q "ARM_Control"; then
+    echo "ARM Control already running."
+    if ! pgrep -f "tmux attach -t $SESSION" > /dev/null; then
+        x-terminal-emulator -T "Rover: Unified Control" -e "tmux attach -t $SESSION" &
+    fi
+    exit 0
+fi
 
+# Create New Column
+tmux split-window -h -f -t $SESSION:0
+tmux split-window -v
 
-x-terminal-emulator -T "ARM: Micro-ROS" -e bash -c "
-sshpass -p 'kratos123' ssh -tt ${RASPI_USER}@${RASPI_IP} '
-  # Check if session exists
-  if ! tmux has-session -t arm_microros 2>/dev/null; then
-      tmux new-session -d -s arm_microros
-      tmux send-keys -t arm_microros \"
-        source ~/rover/install/setup.bash
-        ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyUSB1
-      \" C-m
-  fi
-  tmux attach -t arm_microros || echo "Tmux session failed/closed"
-'
-; exec bash
-" &
+# Bottom (Active) -> ARM_Control
+tmux select-pane -T "ARM_Control"
+tmux respawn-pane -k "bash"
+tmux send-keys "$CMD_ARM" C-m
+P_BOT=$(tmux display-message -p "#{pane_id}")
 
-# -------------------------------
-# 2. ARM CONTROL (Swappable)
-# -------------------------------
-echo "[REMOTE] Starting ARM Control..."
+# Top -> MicroROS_ARM_USB1
+tmux select-pane -U
+tmux select-pane -T "MicroROS_ARM_USB1"
+tmux respawn-pane -k "bash"
+tmux send-keys "$CMD_MICROROS" C-m
+P_TOP=$(tmux display-message -p "#{pane_id}")
 
-# Prevent duplicates
-pkill -f "Rover: ARM Control" 2>/dev/null || true
+# Launch Monitor Loop for ARM Column
+(
+    while tmux list-panes -t "$P_TOP" >/dev/null 2>&1 && tmux list-panes -t "$P_BOT" >/dev/null 2>&1; do
+        sleep 1
+    done
+    tmux kill-pane -t "$P_TOP" 2>/dev/null
+    tmux kill-pane -t "$P_BOT" 2>/dev/null
+) & disown
 
-x-terminal-emulator -T "Rover: ARM Control" -e bash -c "
-sshpass -p 'kratos123' ssh -tt ${RASPI_USER}@${RASPI_IP} '
-  # Kill existing drive session to ensure fresh start (optional, but requested behavior implies one active drive mode)
-  tmux kill-session -t arm_drive 2>/dev/null || true
-
-  tmux new-session -d -s arm_drive
-  tmux send-keys -t arm_drive \"
-    source ~/rover/install/setup.bash
-    export PYTHONUNBUFFERED=1
-    ros2 run arm_controls arm_mapping
-  \" C-m
-  
-  tmux attach -t arm_drive || echo "Tmux session failed/closed"
-'
-; exec bash
-" &
-
-echo "=============================="
-echo "Rover terminal opened."
-echo "Monitoring remote status..."
-
-# ==================================================
-# =============== MONITORING =======================
-# ==================================================
-
-# ---- Remote Logs ----
-echo "Connecting to remote CLI..." > "$datadir/remote_log.txt"
-
-# Capture the last 20 lines of the arm_drive:0.0 pane where arm_mapping is running
-( while true; do
-  # capture to a temp var/file first
-  # Added BatchMode=yes so it fails instantly if no keys, preventing hang.
-  if OUTPUT=$(sshpass -p 'kratos123' ssh ${RASPI_USER}@${RASPI_IP} "tmux capture-pane -pt arm_drive:0.0 -S -20" 2>/dev/null); then
-      if [ -n "$OUTPUT" ]; then
-          echo "$OUTPUT" > "$datadir/remote_log.txt"
-      else
-          touch "$datadir/remote_log.txt"
-      fi
-  fi
-  sleep 0.5
-done ) &
-
-# ---- micro-ROS agent status ----
-( while true; do
-  sshpass -p 'kratos123' ssh ${RASPI_USER}@${RASPI_IP} \
-    "pgrep -f micro_ros_agent >/dev/null && echo RUNNING || echo STOPPED" \
-    > "$datadir/microros.txt"
-  sleep 2
-done ) &
-
-wait
+if ! pgrep -f "tmux attach -t $SESSION" > /dev/null; then
+    x-terminal-emulator -T "Rover: Unified Control" -e "tmux attach -t $SESSION" &
+fi
