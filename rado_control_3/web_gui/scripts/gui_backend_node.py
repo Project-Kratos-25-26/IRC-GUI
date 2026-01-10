@@ -35,17 +35,27 @@ class GuiBackend(Node):
         
         # Robust Path Resolution for mission_plan.txt
         # Check relative path first (Dev/Source Mode) to ensure user edits are synced
+        # 1. Check relative to script (works if symlink-install or running from src)
         relative_path = os.path.abspath(os.path.join(self.script_dir, '../../config/mission_plan.txt'))
+        
+        # 2. Check known source location (Hard fix for this workspace structure)
+        # This handles the case where we are running from install/lib but want to write to src/Main_Control
+        home_dir = os.path.expanduser('~')
+        source_path = os.path.join(home_dir, 'ros2_ws/src/Main_Control/rado_control_3/config/mission_plan.txt')
         
         if os.path.exists(relative_path):
             self.mission_file = relative_path
-            self.get_logger().info(f"Dev Mode: Using source mission_plan at {self.mission_file}")
+            self.get_logger().info(f"Dev Mode: Using relative mission_plan at {self.mission_file}")
+        elif os.path.exists(source_path):
+            self.mission_file = source_path
+            self.get_logger().info(f"Dev Mode: Found source mission_plan at {self.mission_file}")
         else:
             try:
                 share_dir = get_package_share_directory('rado_control_3')
                 self.mission_file = os.path.join(share_dir, 'config', 'mission_plan.txt')
+                self.get_logger().warn(f"Source file not found. Using install/share: {self.mission_file}")
             except Exception as e:
-                self.get_logger().warn(f"Could not resolve share dir: {e}. Using relative fallback.")
+                self.get_logger().warn(f"Could not resolve share dir: {e}. Fallback to relative.")
                 self.mission_file = relative_path
         
         self.get_logger().info(f"GUI Backend Node Started. Listening on /sys/command. Logging to: {self.mission_file}")

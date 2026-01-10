@@ -7,3 +7,5 @@ pickup,red,0.00,0.00
 dropoff,blue,0.00,0.00
 dropoff,green,0.00,0.00
 dropoff,red,0.00,0.00
+pickup,green,0.00,0.00
+pickup,blue,0.00,0.00
