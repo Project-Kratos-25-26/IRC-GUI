@@ -14,3 +14,12 @@
 [rosbridge_websocket-1] [INFO] [1768054813.732805432] [rosbridge_websocket]: [Client 12909c82-cc54-4560-888e-8ecfefb646c6] Subscribed to /joy
 [rosbridge_websocket-1] [INFO] [1768054813.734049880] [rosbridge_websocket]: [Client 12909c82-cc54-4560-888e-8ecfefb646c6] Subscribed to /system/state
 [rosbridge_websocket-1] [INFO] [1768054813.735170954] [rosbridge_websocket]: [Client 12909c82-cc54-4560-888e-8ecfefb646c6] Subscribed to /mavros/global_position/global
+[rosbridge_websocket-1] [INFO] [1768055076.596790436] [rosbridge_websocket]: Client disconnected. 0 clients total.
+[rosbridge_websocket-1] [INFO] [1768055076.698091321] [rosbridge_websocket]: Calling services in existing thread
+[rosbridge_websocket-1] [INFO] [1768055076.698770255] [rosbridge_websocket]: Sending action goals in existing thread
+[rosbridge_websocket-1] [INFO] [1768055076.699421859] [rosbridge_websocket]: Client connected. 1 clients total.
+[rosbridge_websocket-1] [INFO] [1768055076.701156885] [rosbridge_websocket]: [Client 430651f6-ff6a-4720-8082-6c16b98675a0] Subscribed to /gui/system_health
+[rosbridge_websocket-1] [INFO] [1768055076.702226623] [rosbridge_websocket]: [Client 430651f6-ff6a-4720-8082-6c16b98675a0] Subscribed to /joy0
+[rosbridge_websocket-1] [INFO] [1768055076.703220514] [rosbridge_websocket]: [Client 430651f6-ff6a-4720-8082-6c16b98675a0] Subscribed to /joy
+[rosbridge_websocket-1] [INFO] [1768055076.704219504] [rosbridge_websocket]: [Client 430651f6-ff6a-4720-8082-6c16b98675a0] Subscribed to /system/state
+[rosbridge_websocket-1] [INFO] [1768055076.705146875] [rosbridge_websocket]: [Client 430651f6-ff6a-4720-8082-6c16b98675a0] Subscribed to /mavros/global_position/global
