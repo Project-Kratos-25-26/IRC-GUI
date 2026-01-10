@@ -23,11 +23,11 @@ ros2 run joy joy_node --ros-args \
   -p device_name:="Thrustmaster T.Flight Hotas One" \
   > "data/joy0.log" 2>&1 &
 
-# 🕹️ Node 2: Sony Wireless Controller
-# ros2 run joy joy_node --ros-args \
-#   -r __node:=joy \
-#   -p device_name:="Sony Interactive Entertainment Wireless Controller" \
-#   > "data/joy.log" 2>&1 &
+🕹️ Node 2: Sony Wireless Controller
+ros2 run joy joy_node --ros-args \
+  -r __node:=joy \
+  -p device_name:="Sony Interactive Entertainment Wireless Controller" \
+  > "data/joy.log" 2>&1 &
 
 
 # 3. Start Nodes using ros2 run (Works in both Source and Install if sourced)
