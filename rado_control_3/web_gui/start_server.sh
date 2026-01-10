@@ -57,7 +57,7 @@ echo "------------------------------"
 echo "[LOCAL] Starting Heartbeat..."
 (
     RASPI_IP="192.168.1.16"
-    JETSON_IP="192.168.1.17"
+    JETSON_IP="192.168.1.10"
     
     while true; do
         # Ping RASPI

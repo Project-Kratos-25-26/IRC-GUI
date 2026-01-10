@@ -190,6 +190,7 @@ window.drawJoyInput = function (joy) {
 
     for (let i = 0; i < 3; i++) {
         let val = joy[i];
+        if (i === 0) val = -val; // Invert Turn for visualization
         if (val === undefined || val === null) val = 0;
 
         let y = 15 + i * 30;
