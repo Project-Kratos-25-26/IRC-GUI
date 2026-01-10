@@ -11,6 +11,7 @@ echo "Switching to mode: $MODE"
 CMD_MANUAL="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && export PYTHONUNBUFFERED=1 && ros2 run drive_controls drive.py; exec bash'"
 CMD_AUTO="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && export PYTHONUNBUFFERED=1 && ros2 run drive_controls drive_auto.py; exec bash'"
 CMD_TELEOP="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && ros2 run teleop_twist_keyboard teleop_twist_keyboard; exec bash'"
+CMD_KILL="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'pkill -f drive.py; pkill -f drive_auto.py; pkill -f teleop_twist_keyboard' || true"
 
 if ! tmux has-session -t $SESSION 2>/dev/null; then
     echo "Session $SESSION not found. Please init drive first."
@@ -25,6 +26,10 @@ if [ -z "$DRIVE_PANE_ID" ]; then
     echo "Drive Control pane not found!"
     exit 1
 fi
+
+echo "Killing previous processes on Raspi..."
+eval "$CMD_KILL"
+
 
 if [ "$MODE" == "thrustmaster" ]; then
     # MANUAL

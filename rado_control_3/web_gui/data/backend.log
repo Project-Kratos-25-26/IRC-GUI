@@ -1,0 +1,10 @@
+[INFO] [1768078577.157077578] [gui_backend]: Dev Mode: Using relative mission_plan at /home/supersniper/ros2_ws/src/Main_Control/rado_control_3/config/mission_plan.txt
+[INFO] [1768078577.157336177] [gui_backend]: GUI Backend Node Started. Listening on /sys/command. Logging to: /home/supersniper/ros2_ws/src/Main_Control/rado_control_3/config/mission_plan.txt
+[INFO] [1768078584.912570247] [gui_backend]: Received command: init_drive
+[INFO] [1768078584.912947737] [gui_backend]: Executing: /home/supersniper/ros2_ws/src/Main_Control/rado_control_3/web_gui/scripts/start_drive.sh
+Permission denied, please try again.
+[INFO] [1768078634.625558767] [gui_backend]: Received command: PROCEED
+[INFO] [1768078634.625891815] [gui_backend]: Executing: /home/supersniper/ros2_ws/src/Main_Control/rado_control_3/web_gui/scripts/switch_mode.sh keyboard
+Switching to mode: keyboard
+Killing previous processes on Raspi...
+Connection to 192.168.1.16 closed.
