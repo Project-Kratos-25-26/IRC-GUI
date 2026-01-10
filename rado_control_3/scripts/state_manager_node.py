@@ -7,7 +7,7 @@ from geometry_msgs.msg import Twist
 class StateManager(Node):
     def __init__(self):
         super().__init__('state_manager')
-        self.state = 'MANUAL' # Default to MANUAL
+        self.state = 'IDLE' # Default to IDLE
         self.manual_twist_msg = Twist() # Default to stopped
         self.auto_twist_msg = Twist()   # Default to stopped
         
@@ -15,7 +15,7 @@ class StateManager(Node):
         self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
         
         # Publisher to inform other nodes of the current state
-        self.state_pub = self.create_publisher(String, '/rover_state', 10)
+        self.state_pub = self.create_publisher(String, '/system/state', 10)
         
         # === SUBSCRIBERS TO ACT AS A MUX ===
         # Subscriber to manual joystick commands
@@ -24,7 +24,7 @@ class StateManager(Node):
         self.create_subscription(Twist, '/auto/cmd_vel', self.auto_cmd_callback, 10)
         
         # Subscribers for state logic
-        self.create_subscription(String, '/gcs/command', self.gcs_command_callback, 10)
+        self.cmd_sub = self.create_subscription(String, '/sys/command', self.cmd_callback, 10)
         self.create_subscription(Bool, '/auto/task_complete', self.task_complete_callback, 10)
         
         # The main loop for publishing state and motor commands
@@ -39,23 +39,25 @@ class StateManager(Node):
         """Stores the latest command from the autonomous script."""
         self.auto_twist_msg = msg
 
-    def gcs_command_callback(self, msg):
-        """Callback for commands from the GCS."""
-        command = msg.data.upper()
-        
-        if command == 'PROCEED' and self.state == 'MANUAL':
-            self.state = 'AUTONOMOUS'
-            self.get_logger().info('State changed to: AUTONOMOUS')
-            
-        elif command == 'MANUAL': # Emergency stop
-            self.state = 'MANUAL'
-            self.get_logger().info('Emergency stop: State changed to MANUAL')
+    def cmd_callback(self, msg):
+        cmd = msg.data
+        if cmd == 'init_drive':
+            self.state = "MANUAL"
+            self.get_logger().info("System Initialized: Switched to MANUAL state")
+        elif cmd == 'manual_mode':
+            self.state = "MANUAL"
+            self.get_logger().info("Switched to MANUAL state")
+        elif cmd == 'auto_mode' or cmd == 'PROCEED':
+            self.state = "AUTONOMOUS"
+            self.get_logger().info("Switched to AUTONOMOUS state")
+        elif cmd == 'task_complete' or cmd == 'MANUAL':
+            self.state = "MANUAL"
+            self.get_logger().info("Task Complete: Switching to MANUAL")
 
     def task_complete_callback(self, msg):
-        """Callback for the 'task complete' signal from the brain."""
-        if self.state == 'AUTONOMOUS' and msg.data is True:
-            self.get_logger().info('Task complete. Reverting to MANUAL.')
-            self.state = 'MANUAL'
+        if msg.data:
+            self.state = "MANUAL"
+            self.get_logger().info("Auto Task Complete -> Manual")
 
     def control_loop(self):
         """Publishes state and forwards the correct motor command."""

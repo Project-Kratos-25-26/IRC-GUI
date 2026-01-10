@@ -67,20 +67,44 @@ def generate_launch_description():
         name='cone_follower',
         output='screen'
     )
-    Node(
+    joy_node_ps5 = Node(
         package='joy',
         executable='joy_node',
         name='joy_node',
-        output='screen'
-    ),
+        output='screen',
+        parameters=[{'device_name': 'Sony Interactive Entertainment Wireless Controller'}]
+    )
 
-    Node(
+    joy_node_thrustmaster = Node(
+        package='joy',
+        executable='joy_node',
+        name='joy_node_tm', # Distinct name
+        output='screen',
+        remappings=[('/joy', '/joy0')],
+        parameters=[{'device_name': 'Thrustmaster T.Flight Hotas One'}]
+    )
+
+    telemetry_bridge = Node(
+        package=pkg_name,
+        executable='telemetry_bridge_node.py',
+        name='telemetry_bridge',
+        output='screen'
+    )
+
+    gui_backend = Node(
+        package=pkg_name,
+        executable='gui_backend_node.py',
+        name='gui_backend',
+        output='screen'
+    )
+
+    teleop_node = Node(
         package='teleop_twist_joy',
         executable='teleop_node',
         name='teleop_node',
         output='screen',
         remappings=[('/cmd_vel', '/manual/cmd_vel')]
-    ),
+    )
 
 
     return LaunchDescription([
@@ -92,7 +116,13 @@ def generate_launch_description():
         system_monitor,
         state_manager,
         coordinate_follower,
+        coordinate_follower,
         cone_follower,
+        joy_node_ps5,
+        joy_node_thrustmaster,
+        telemetry_bridge,
+        gui_backend,
+        teleop_node
     ])
 
     

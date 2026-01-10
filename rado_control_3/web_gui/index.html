@@ -1,22 +1,56 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>RADO Command Center</title>
     <script src="https://cdn.jsdelivr.net/npm/roslib@1/build/roslib.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
+
     <link rel="stylesheet" href="css/style.css">
+
+    <!-- PS5 Controller Button Styles (from drive_gui/test) -->
+    <style>
+        .ps-btn {
+            background: #333;
+            border: 1px solid #555;
+            transition: all 0.1s;
+        }
+
+        .ps-btn.round {
+            border-radius: 50%;
+        }
+
+        .ps-btn.pill {
+            border-radius: 4px;
+        }
+
+        .ps-trigger-bar {
+            background: #333;
+            border: 1px solid #555;
+            position: absolute;
+            overflow: hidden;
+        }
+
+        .ps-trigger-fill {
+            background: lime;
+            width: 100%;
+            height: 0%;
+            position: absolute;
+            bottom: 0;
+            transition: height 0.05s;
+        }
+    </style>
 </head>
+
 <body>
 
     <div class="header">
         <div class="brand"><i class="fas fa-robot"></i> RADO CONTROL</div>
         <div class="header-right">
-            <div id="connection-dot" style="color:red; font-size:12px;">● DISCONNECTED</div>
-            <div id="state-badge" class="status-badge MANUAL">MANUAL</div>
+            <div id="state-badge" class="status-badge IDLE">IDLE</div>
         </div>
     </div>
 
@@ -31,19 +65,36 @@
     <div class="content">
         <div id="tab-setup" class="tab-pane">
             <div class="grid-3">
-                <div class="card"><h3>Node Mgmt</h3><button onclick="sendSysCommand('restart_mavros')">Restart MAVROS</button></div>
+                <div class="card">
+                    <h3>Node Mgmt</h3><button onclick="sendSysCommand('restart_mavros')">Restart MAVROS</button>
                 </div>
+                <div class="card">
+                    <h3>Control Mode</h3>
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <label style="color: white;">
+                            <input type="radio" name="controlMode" value="thrustmaster" checked
+                                onchange="sendSysCommand('manual_mode')"> Thrustmaster (Manual)
+                        </label>
+                        <label style="color: white;">
+                            <input type="radio" name="controlMode" value="keyboard"
+                                onchange="sendSysCommand('auto_mode')"> Keyboard (Auto)
+                        </label>
+                        <span id="modeStatus" style="font-size: 0.8em; color: #aaa;"></span>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div id="tab-health" class="tab-pane">
             <div class="card" style="max-width: 600px; margin: 0 auto;">
-                <h3 class="health-header">📡 Network Diagnostics</h3>
-                
-                <div id="health-list">
-                    <div class="health-row">
-                        <span>Waiting for System Monitor...</span>
-                    </div>
+                <h3>Device Status</h3>
+                <div class="health-row"><span>Raspberry Pi</span><span id="health-raspi" style="color:#aaa">--</span>
                 </div>
+                <div class="health-row"><span>Jetson</span><span id="health-jetson" style="color:#aaa">--</span></div>
+            </div>
+            <div class="card" style="max-width: 600px; margin: 20px auto 0;">
+                <h3>Diagnostics</h3>
+                <div id="health-list"></div>
             </div>
         </div>
 
@@ -58,44 +109,232 @@
                     </div>
                     <div class="card">
                         <h3>Log Target</h3>
-                        <select id="obj-select"><option>OBJECT_1</option><option>DELIVERY_1</option></select>
+                        <select id="obj-select">
+                            <option>OBJECT_1</option>
+                            <option>DELIVERY_1</option>
+                        </select>
                         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
                             <button class="btn-red" onclick="selColor('RED')">R</button>
                             <button class="btn-green" onclick="selColor('GREEN')">G</button>
                             <button class="btn-blue" onclick="selColor('BLUE')">B</button>
                         </div>
-                        <button class="btn-blue" style="margin-top:10px" onclick="sendLog()">LOG</button>
-                        <div id="log-msg" style="text-align:center;">Ready</div>
+                        <button class="btn-blue" style="margin-top:10px; width:100%" onclick="sendLog()">LOG</button>
+                        <div id="log-msg" style="text-align:center; margin-top:5px;">Ready</div>
                     </div>
-                    <button class="btn-green" style="margin-top:auto" onclick="openTab('tab-mission')">GO TO MAP</button>
+                    <div class="card">
+                        <h3>Status</h3>
+                        <div class="status-row">RASPI: <span id="status-raspi-recon">--</span></div>
+                        <div class="status-row">JETSON: <span id="status-jetson-recon">--</span></div>
+                        <br>
+                        <button class="btn-green" onclick="sendSysCommand('init_drive')">INITIALIZE DRIVE</button>
+                    </div>
                 </div>
             </div>
+            <button class="btn-green" style="margin-top:auto" onclick="openTab('tab-mission')">GO TO
+                MAP</button>
         </div>
+    </div>
+    </div>
 
-        <div id="tab-mission" class="tab-pane">
-            <div class="grid-2">
-                <div class="card" style="height:100%"><div id="map"></div></div>
-                <div class="card">
-                    <button class="btn-green" style="height:80px; margin-bottom:20px;" onclick="sendCmd('PROCEED')">PROCEED</button>
-                    <button class="btn-red" style="height:80px;" onclick="sendCmd('MANUAL')">STOP</button>
-                    <ul id="mission-log"></ul>
-                </div>
+    <div id="tab-mission" class="tab-pane">
+        <div class="grid-2">
+            <div class="card" style="height:100%">
+                <div id="map"></div>
             </div>
-        </div>
-
-        <div id="tab-arm" class="tab-pane">
-            <div class="grid-2">
-                <div class="card">
-                    <h3>Arm</h3>
-                    <div class="arm-slider-group"><label>Base <span>0</span></label><input type="range" min="-90" max="90" oninput="updateArm(0, this.value)"></div>
-                    </div>
+            <div class="card">
+                <button class="btn-green" style="height:80px; margin-bottom:20px;"
+                    onclick="sendCmd('PROCEED')">PROCEED</button>
+                <button class="btn-red" style="height:80px;" onclick="sendCmd('MANUAL')">STOP</button>
+                <ul id="mission-log"></ul>
+                <div style="margin-top:10px; border-top:1px solid #444; padding-top:10px;">
+                    <div>RASPI: <span id="status-raspi-mission">--</span></div>
+                    <div>JETSON: <span id="status-jetson-mission">--</span></div>
+                </div>
             </div>
         </div>
     </div>
 
-    <script src="js/config.js"></script>
-    <script src="js/ros_module.js"></script>
-    <script src="js/map_module.js"></script>
-    <script src="js/main.js"></script>
+    <div id="tab-arm" class="tab-pane">
+        <div class="grid-2">
+            <!-- LEFT COLUMN: Controls & Visualization -->
+            <div style="display:flex; flex-direction:column; gap:20px;">
+
+                <!-- INIT LD BUTTON -->
+                <button class="btn-green" id="init-ld-btn" style="padding:12px 24px; font-size:16px;"
+                    onclick="sendSysCommand('init_ld')">INIT LD</button>
+
+                <!-- VISUALS ROW (Side by Side) -->
+                <div style="display:flex; gap:10px; flex:1; min-height: 250px;">
+                    <!-- Min height for visuals -->
+
+                    <!-- Thrustmaster Raw (exact from test/index.html) -->
+                    <div class="card" style="flex:0.6; display:flex; flex-direction:column; align-items:center;">
+                        <h3>Thrustmaster Raw</h3>
+                        <canvas id="joyCanvas" width="200" height="200"
+                            style="background: #222; border-radius: 4px;"></canvas>
+                    </div>
+
+                    <div class="card" style="flex:1; display:flex; flex-direction:column; align-items:center;">
+                        <h3>Vector Vis</h3>
+                        <canvas id="vector-canvas" width="200" height="200"
+                            style="background:#222; border-radius:4px; margin-bottom:10px;"></canvas>
+
+                        <!-- Vector Controls -->
+                        <div style="display:flex; gap:10px; font-size:12px; color:#aaa; margin-bottom:5px;">
+                            <label><input type="checkbox" id="vec-inv-x" checked> Inv X</label>
+                            <label><input type="checkbox" id="vec-inv-y" checked> Inv Y</label>
+                            <label><input type="checkbox" id="vec-swap"> Swap</label>
+                        </div>
+
+                        <div
+                            style="width:100%; display:flex; justify-content:space-between; color:#aaa; font-size:12px;">
+                            <span>VX: <span id="val-vx" style="color:cyan">0.00</span></span>
+                            <span>VZ: <span id="val-vz" style="color:cyan">0.00</span></span>
+                            <span>SPD: <span id="val-spd" style="color:cyan">0.0</span></span>
+                        </div>
+                    </div>
+
+                    <!-- PS5 INPUT (Side by Side with Vector Vis) -->
+                    <div class="card" style="flex:1; display:flex; flex-direction:column; align-items:center;">
+                        <h3>PS5 Input</h3>
+
+                        <!-- PS5 Controller (scaled to fit beside Vector Vis) -->
+                        <div style="width:300px; height:210px; overflow:hidden;">
+                            <div id="ps5-container"
+                                style="position: relative; width: 500px; height: 350px; background: #222; border-radius: 40px; border: 2px solid #444; box-shadow: inset 0 0 20px #000; transform: scale(0.6); transform-origin: top left;">
+
+                                <!-- D-Pad -->
+                                <div id="btn-up" class="ps-btn pill"
+                                    style="position: absolute; top: 100px; left: 103px; width: 25px; height: 25px;">
+                                </div>
+                                <div id="btn-down" class="ps-btn pill"
+                                    style="position: absolute; top: 153px; left: 103px; width: 25px; height: 25px;">
+                                </div>
+                                <div id="btn-left" class="ps-btn pill"
+                                    style="position: absolute; top: 127px; left: 74px; width: 25px; height: 25px;">
+                                </div>
+                                <div id="btn-right" class="ps-btn pill"
+                                    style="position: absolute; top: 127px; left: 130px; width: 25px; height: 25px;">
+                                </div>
+
+                                <!-- Face Buttons -->
+                                <div id="btn-triangle" class="ps-btn round"
+                                    style="position: absolute; top: 100px; right: 103px; width: 28px; height: 28px;">
+                                </div>
+                                <div id="btn-cross" class="ps-btn round"
+                                    style="position: absolute; top: 153px; right: 103px; width: 28px; height: 28px;">
+                                </div>
+                                <div id="btn-square" class="ps-btn round"
+                                    style="position: absolute; top: 127px; right: 130px; width: 28px; height: 28px;">
+                                </div>
+                                <div id="btn-circle" class="ps-btn round"
+                                    style="position: absolute; top: 127px; right: 74px; width: 28px; height: 28px;">
+                                </div>
+
+                                <!-- Sticks (Analog) -->
+                                <!-- Base Circles -->
+                                <div
+                                    style="position: absolute; top: 195px; left: 168px; width: 40px; height: 40px; border: 2px solid #555; border-radius: 50%; transform: translate(-50%, -50%);">
+                                </div>
+                                <div
+                                    style="position: absolute; top: 195px; right: 168px; width: 40px; height: 40px; border: 2px solid #555; border-radius: 50%; transform: translate(50%, -50%);">
+                                </div>
+
+                                <div id="stick-l"
+                                    style="position: absolute; top: 195px; left: 168px; width: 20px; height: 20px; background: cyan; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 5px cyan;">
+                                </div>
+                                <div id="stick-r"
+                                    style="position: absolute; top: 195px; right: 168px; width: 20px; height: 20px; background: cyan; border-radius: 50%; transform: translate(50%, -50%); box-shadow: 0 0 5px cyan;">
+                                </div>
+
+                                <!-- Bumpers (L1/R1) -->
+                                <div id="btn-l1" class="ps-btn"
+                                    style="position: absolute; top: 35px; left: 55px; width: 80px; height: 20px; border-radius: 10px; transform: rotate(-10deg);">
+                                </div>
+                                <div id="btn-r1" class="ps-btn"
+                                    style="position: absolute; top: 35px; right: 55px; width: 80px; height: 20px; border-radius: 10px; transform: rotate(10deg);">
+                                </div>
+
+                                <!-- Triggers (L2/R2) - Sliders -->
+                                <div class="ps-trigger-bar"
+                                    style="top: 10px; left: 15px; width: 30px; height: 80px; border-radius: 4px;">
+                                    <div id="fill-l2" class="ps-trigger-fill"></div>
+                                    <div
+                                        style="position: absolute; width: 100%; text-align: center; bottom: -20px; color: #aaa; font-size: 10px;">
+                                        L2</div>
+                                </div>
+                                <div class="ps-trigger-bar"
+                                    style="top: 10px; right: 15px; width: 30px; height: 80px; border-radius: 4px;">
+                                    <div id="fill-r2" class="ps-trigger-fill"></div>
+                                    <div
+                                        style="position: absolute; width: 100%; text-align: center; bottom: -20px; color: #aaa; font-size: 10px;">
+                                        R2</div>
+                                </div>
+
+                                <!-- Center -->
+                                <div id="btn-share" class="ps-btn pill"
+                                    style="position: absolute; top: 100px; left: 155px; width: 20px; height: 10px;">
+                                </div>
+                                <div id="btn-opt" class="ps-btn pill"
+                                    style="position: absolute; top: 100px; right: 155px; width: 20px; height: 10px;">
+                                </div>
+                                <div id="btn-ps" class="ps-btn round"
+                                    style="position: absolute; top: 200px; left: 240px; width: 20px; height: 20px;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            style="font-size: 0.9em; display: flex; gap: 15px; justify-content: center; margin-top: 5px;">
+                            <label><input type="checkbox" id="ps5-inv-x"> Inv X</label>
+                            <label><input type="checkbox" id="ps5-inv-y"> Inv Y</label>
+                        </div>
+                        <div style="text-align:center; font-size: 0.8em; color: #aaa; margin-top: 5px;">
+                            Values: L(<span id="val-lx">0.0</span>, <span id="val-ly">0.0</span>)
+                            R(<span id="val-rx">0.0</span>, <span id="val-ry">0.0</span>)
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ARM SLIDER (Compact) -->
+                <div class="card" style="padding:10px;">
+                    <h3 style="margin-bottom:8px;">Arm Control</h3>
+                    <div class="arm-slider-group">
+                        <label><span>Base</span> <span id="val-base">0</span></label>
+                        <input type="range" id="slider-base" min="0" max="180" value="90">
+                    </div>
+                    <div class="arm-slider-group">
+                        <label><span>Shoulder</span> <span id="val-shoulder">0</span></label>
+                        <input type="range" id="slider-shoulder" min="0" max="180" value="90">
+                    </div>
+                    <div class="arm-slider-group">
+                        <label><span>Elbow</span> <span id="val-elbow">0</span></label>
+                        <input type="range" id="slider-elbow" min="0" max="180" value="90">
+                    </div>
+                    <div class="arm-slider-group">
+                        <label><span>Gripper</span> <span id="val-gripper">0</span></label>
+                        <input type="range" id="slider-gripper" min="0" max="180" value="90">
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: CAMERA (50%) -->
+            <div class="card" style="padding:0; overflow:visible; border:none; position:relative; min-width:0;">
+                <h3
+                    style="position:absolute; top:10px; left:10px; z-index:10; background:rgba(0,0,0,0.5); padding:2px 5px; border-radius:4px;">
+                    Landing Cam</h3>
+                <img src="http://localhost:8080/stream?topic=/camera/image_raw" class="camera-feed" id="video-stream-ld"
+                    onerror="this.src='/assets/placeholder.png';"
+                    style="width:100%; height:100%; object-fit:cover; background:#111;">
+            </div>
+        </div>
+    </div>
+
+    <script src="js/config.js?v=10005"></script>
+    <script src="js/ros_module.js?v=10005"></script>
+    <script src="js/map_module.js?v=10005"></script>
+    <!-- ADDING CACHE BUSTER -->
+    <script src="js/main.js?v=10005"></script>
 </body>
+
 </html>
