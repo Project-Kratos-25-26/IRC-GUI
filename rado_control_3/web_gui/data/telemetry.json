@@ -1,1 +1,0 @@
-{"joy": [-0.0, 0.030732138082385063, 0.2900109589099884], "joy_ps5": {"axes": [], "buttons": []}, "vel": {"linear_x": 0.0, "angular_z": 0.0}, "microros": "", "ping_raspi": "OFFLINE", "local_calc": {"rover_x": 0, "rover_z": 0, "velx": 0.0, "velz": 0.0, "wheels": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "timestamp": 1768078692.1552615}
