@@ -5,129 +5,72 @@ set -euo pipefail
 JETSON_USER="kratos"
 JETSON_IP="192.168.1.10"
 JETSON_PASSWORD="kratos123"
+SESSION="mission_ui"
 
 echo "================================="
 echo "   MISSION INITIALIZATION"
 echo "================================="
 echo ""
 
-# ===================================
-# 1. Check Jetson Orin Connectivity
-# ===================================
-echo "[REMOTE] Checking Jetson Orin connectivity..."
-if ! ping -c 2 -W 2 ${JETSON_IP} > /dev/null 2>&1; then
-    echo ""
-    echo "❌ ================================="
-    echo "   JETSON ORIN OFFLINE"
-    echo "   IP: ${JETSON_IP}"
-    echo "================================="
-    echo ""
+# Commands to run on the Orin (wrapped in SSH)
+SSH_PRE="sshpass -p '${JETSON_PASSWORD}' ssh -tt ${JETSON_USER}@${JETSON_IP}"
+ROS_SRC="source ~/ros2_ws/install/setup.bash"
+
+# 1. RTABMAP (Immediate)
+CMD_1="${SSH_PRE} '${ROS_SRC} && ros2 launch kratos_rtabmap kratos_rtabmap.launch.py; exec bash'"
+
+# 2. TF (5s delay)
+CMD_2="${SSH_PRE} '${ROS_SRC} && echo \"Waiting 5s...\" && sleep 5 && ros2 run tf2_ros static_transform_publisher -0.4 0.0 0.0 0.0 0.0 0.0 zed_camera_link base_link; exec bash'"
+
+# 3. NAV2 (5s + 3s = 8s delay)
+CMD_3="${SSH_PRE} '${ROS_SRC} && echo \"Waiting 8s...\" && sleep 8 && ros2 launch kratos_nav2 kratos_nav2.launch.py; exec bash'"
+
+# 4. VEL CLAMP (No delay specified, running immediately/parallel)
+CMD_4="${SSH_PRE} '${ROS_SRC} && ros2 run kratos_vel_clamp velclamp.py; exec bash'"
+
+# Ensure single session instance
+if ! tmux has-session -t $SESSION 2>/dev/null; then
+    echo "Creating new session: $SESSION"
+    tmux new-session -d -s $SESSION
+    tmux rename-window -t $SESSION:0 'MissionControl'
+
+    # Pane 0: RTABMAP
+    tmux select-pane -t $SESSION:0.0
+    tmux select-pane -T "RTAB-Map"
+    tmux send-keys -t $SESSION:0.0 "$CMD_1" C-m
+
+    # Split for Pane 1: TF (Horizontal split)
+    tmux split-window -h -t $SESSION:0.0
+    tmux select-pane -t $SESSION:0.1
+    tmux select-pane -T "TF_Static"
+    tmux send-keys -t $SESSION:0.1 "$CMD_2" C-m
+
+    # Split for Pane 2: Nav2 (Vertical split of Pane 0)
+    tmux select-pane -t $SESSION:0.0
+    tmux split-window -v -t $SESSION:0.0
+    tmux select-pane -t $SESSION:0.2
+    tmux select-pane -T "Nav2"
+    tmux send-keys -t $SESSION:0.2 "$CMD_3" C-m
+
+    # Split for Pane 3: Vel Clamp (Vertical split of Pane 1)
+    tmux select-pane -t $SESSION:0.1
+    tmux split-window -v -t $SESSION:0.1
+    tmux select-pane -t $SESSION:0.3
+    tmux select-pane -T "VelClamp"
+    tmux send-keys -t $SESSION:0.3 "$CMD_4" C-m
+
+    # Arrange tiles
+    tmux select-layout -t $SESSION:0 tiled
     
-    # Show GUI popup
-    zenity --error \
-        --title="Jetson Orin Offline" \
-        --text="Cannot connect to Jetson Orin at ${JETSON_IP}\n\nPlease check:\n• Jetson is powered on\n• Network connection is active\n• IP address is correct" \
-        --width=400 2>/dev/null || \
-    notify-send -u critical "Jetson Orin Offline" "Cannot connect to ${JETSON_IP}" 2>/dev/null || true
+    echo "✓ Session started with 4 remote panes."
     
-    exit 1
+else
+    echo "Session $SESSION already exists. attaching..."
 fi
 
-echo "✓ Jetson Orin is online (${JETSON_IP})"
+# Bring to foreground if running in a GUI terminal context
+if ! pgrep -f "tmux attach -t $SESSION" > /dev/null; then
+    x-terminal-emulator -T "Mission: Unified Control" -e "tmux attach -t $SESSION" &
+fi
 
-# ===================================
-# 2. Launch Bringup on Jetson Orin
-# ===================================
-echo ""
-echo "[REMOTE] Launching Bringup on Jetson Orin..."
-x-terminal-emulator -T "Mission: Bringup (Jetson)" -e bash -c "
-sshpass -p '${JETSON_PASSWORD}' ssh -tt ${JETSON_USER}@${JETSON_IP} '
-  echo \"=================================\";
-  echo \"   BRINGUP LAUNCH (JETSON ORIN)\";
-  echo \"=================================\";
-  echo \"\";
-  
-  # Check if session exists, create if not
-  if ! tmux has-session -t mission_bringup 2>/dev/null; then
-      tmux new-session -d -s mission_bringup;
-      tmux send-keys -t mission_bringup \"
-        source ~/ros2_ws/install/setup.bash
-        ros2 launch kratos_bringup bringup.launch.py
-      \" C-m;
-  fi
-  
-  tmux attach -t mission_bringup || echo \"Tmux session failed/closed\";
-'
-; exec bash
-" &
-
-# Wait for bringup to initialize
-echo "Waiting 3 seconds for BRINGUP to initialize on Jetson..."
-sleep 3
-
-echo "✓ Jetson Orin is online (${JETSON_IP})"
-
-# ===================================
-# 3. Launch RTABMAP on Jetson Orin
-# ===================================
-echo ""
-echo "[REMOTE] Launching RTABMAP on Jetson Orin..."
-x-terminal-emulator -T "Mission: RTABMAP (Jetson)" -e bash -c "
-sshpass -p '${JETSON_PASSWORD}' ssh -tt ${JETSON_USER}@${JETSON_IP} '
-  echo \"=================================\";
-  echo \"   RTABMAP LAUNCH (JETSON ORIN)\";
-  echo \"=================================\";
-  echo \"\";
-  
-  # Check if session exists, create if not
-  if ! tmux has-session -t mission_rtabmap 2>/dev/null; then
-      tmux new-session -d -s mission_rtabmap;
-      tmux send-keys -t mission_rtabmap \"
-        source ~/ros2_ws/install/setup.bash
-        ros2 launch kratos_rtabmap kratos_rtabmap.launch.py
-      \" C-m;
-  fi
-  
-  tmux attach -t mission_rtabmap || echo \"Tmux session failed/closed\";
-'
-; exec bash
-" &
-
-# Wait for rtabmap to initialize
-echo "Waiting 10 seconds for RTABMAP to initialize on Jetson..."
-sleep 10
-
-# ===================================
-# 4. Launch NAV2 on Jetson Orin
-# ===================================
-echo ""
-echo "[REMOTE] Launching NAV2 on Jetson Orin..."
-x-terminal-emulator -T "Mission: NAV2 (Jetson)" -e bash -c "
-sshpass -p '${JETSON_PASSWORD}' ssh -tt ${JETSON_USER}@${JETSON_IP} '
-  echo \"=================================\";
-  echo \"   NAV2 LAUNCH (JETSON ORIN)\";
-  echo \"=================================\";
-  echo \"\";
-  
-  # Check if session exists, create if not
-  if ! tmux has-session -t mission_nav2 2>/dev/null; then
-      tmux new-session -d -s mission_nav2;
-      tmux send-keys -t mission_nav2 \"
-        source ~/ros2_ws/install/setup.bash
-        ros2 launch kratos_nav2 kratos_nav2.launch.py
-      \" C-m;
-  fi
-  
-  tmux attach -t mission_nav2 || echo \"Tmux session failed/closed\";
-'
-; exec bash
-" &
-
-echo ""
-echo "================================="
-echo "✓ All systems launched on Jetson!"
-echo "  - Jetson: Bringup"
-echo "  - Jetson: RTABMAP"
-echo "  - Jetson: NAV2"
-echo "================================="
-echo ""
+echo "Done."

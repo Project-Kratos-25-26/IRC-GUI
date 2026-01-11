@@ -17,6 +17,7 @@ function openTab(id) {
 
 // --- COMMAND SENDERS ---
 let raspiStatus = "OFFLINE";
+let jetsonStatus = "OFFLINE";
 
 function sendCmd(cmd) {
     if ((cmd === 'PROCEED') && raspiStatus !== 'ONLINE') {
@@ -36,6 +37,15 @@ function sendSysCommand(cmd) {
         alert("Cannot Execute: Raspberry Pi is OFFLINE!");
         // Revert radio button if needed (simple fix: user sees alert, radio stays checked but cmd not sent. acceptable for now)
         return;
+    }
+
+    // Check Jetson status for init_mission
+    if (cmd === 'init_mission') {
+        console.log(`[DEBUG] init_mission called. jetsonStatus = ${jetsonStatus}`);
+        if (jetsonStatus !== 'ONLINE') {
+            alert("Cannot Execute: Jetson Orin is OFFLINE!");
+            return;
+        }
     }
 
     sysPub.publish(new ROSLIB.Message({ data: cmd }));
@@ -446,6 +456,8 @@ function pollTelemetry() {
         .then(r => r.json())
         .then(data => {
             raspiStatus = data.raspi || 'OFFLINE';
+            jetsonStatus = data.jetson || 'OFFLINE';
+
             // Update RASPI status
             const raspiRecon = document.getElementById('status-raspi-recon');
             const raspiMission = document.getElementById('status-raspi-mission');
