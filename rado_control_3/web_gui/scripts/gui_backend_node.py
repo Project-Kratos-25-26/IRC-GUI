@@ -66,6 +66,8 @@ class GuiBackend(Node):
         
         if cmd == 'init_drive':
             self.run_script('start_drive.sh')
+        elif cmd == 'init_servo':
+            self.run_script('servo.sh')
         elif cmd == 'init_ld':
             self.run_script('start_ld.sh')
         elif cmd == 'init_arm':
@@ -117,7 +119,8 @@ class GuiBackend(Node):
             
             # Pass environment with DISPLAY set for x-terminal-emulator
             env = os.environ.copy()
-            env['DISPLAY'] = ':0'
+            if 'DISPLAY' not in env:
+                env['DISPLAY'] = ':0'
             
             # Use Popen to run it with proper environment
             subprocess.Popen(cmd, cwd=self.script_dir, env=env)

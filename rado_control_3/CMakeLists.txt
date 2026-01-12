@@ -13,11 +13,13 @@ install(
   PROGRAMS
   scripts/state_manager_node.py
   scripts/coordinate_follower_node.py
+  scripts/drive.py
   scripts/system_monitor_node.py
   web_gui/scripts/start_drive.sh
   web_gui/scripts/start_ld.sh
   web_gui/scripts/start_arm.sh
   web_gui/scripts/switch_mode.sh
+  web_gui/scripts/servo.sh
   scripts/cone_follower_node.py
   web_gui/scripts/gui_backend_node.py
   web_gui/scripts/telemetry_bridge_node.py

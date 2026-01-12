@@ -57,6 +57,10 @@ python3 ../scripts/state_manager_node.py > "data/state_manager.log" 2>&1 &
 echo "[LOCAL] Starting Rosbridge..."
 ros2 launch rosbridge_server rosbridge_websocket_launch.xml > "data/rosbridge.log" 2>&1 &
 
+# 2.3 Initialize NVGPU on Jetson
+echo "[LOCAL] Initializing NVGPU on Jetson..."
+bash scripts/init_nvgpu.sh > "data/init_nvgpu.log" 2>&1 &
+
 # 2.4 Start Camera Streams on Jetson (via SSH)
 echo "[LOCAL] Starting Jetson camera server..."
 bash scripts/start_cameras.sh > "data/start_cameras.log" 2>&1 &
