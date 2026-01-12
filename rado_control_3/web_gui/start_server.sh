@@ -13,6 +13,10 @@ echo "=============================="
 echo "   Drive GUI - Local System   "
 echo "=============================="
 
+# Cleanup old processes
+echo "[LOCAL] Cleaning up old processes..."
+pkill -f "rosbridge_websocket" || true
+pkill -f "joy_node" || true
 mkdir -p data
 
 # 1. Start Joystick
@@ -44,9 +48,9 @@ python3 ../scripts/state_manager_node.py > "data/state_manager.log" 2>&1 &
 echo "[LOCAL] Starting Rosbridge..."
 ros2 launch rosbridge_server rosbridge_websocket_launch.xml > "data/rosbridge.log" 2>&1 &
 
-# 2.3 Start Web Video Server (For Camera)
-echo "[LOCAL] Starting Web Video Server..."
-ros2 run web_video_server web_video_server > "data/webvideo.log" 2>&1 &
+# 2.4 Start Camera Streams on Jetson (via SSH)
+echo "[LOCAL] Starting Jetson camera server..."
+bash scripts/start_cameras.sh > "data/start_cameras.log" 2>&1 &
 
 # 3. Start Server
 echo "------------------------------"
@@ -81,4 +85,4 @@ echo "[LOCAL] Starting Heartbeat..."
     done
 ) &
 
-python3 -m http.server 8001
+python3 scripts/server.py

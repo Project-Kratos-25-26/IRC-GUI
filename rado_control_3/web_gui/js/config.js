@@ -2,9 +2,16 @@
 const CONFIG = {
     // ROSBridge WebSocket URL
     ROSBRIDGE_URL: `ws://${window.location.hostname}:9090`,
-    
-    // Video Stream URL (WebVideoServer)
-    VIDEO_URL: `http://${window.location.hostname}:8080/stream?topic=/zed/zed_node/rgb/image_rect_color&type=mjpeg&quality=50`,
+
+    // Camera Sources Map (6 USB cameras via GStreamer)
+    CAMERA_SOURCES: {
+        "Camera 1": { type: "receiver", id: "Camera 1" },
+        "Camera 2": { type: "receiver", id: "Camera 2" },
+        "Camera 3": { type: "receiver", id: "Camera 3" },
+        "Camera 4": { type: "receiver", id: "Camera 4" },
+        "Camera 5": { type: "receiver", id: "Camera 5" },
+        "Camera 6": { type: "receiver", id: "Camera 6" }
+    },
 
     // Topic Names
     TOPICS: {

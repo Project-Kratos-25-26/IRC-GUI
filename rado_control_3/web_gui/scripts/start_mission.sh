@@ -14,19 +14,27 @@ echo ""
 
 # Commands to run on the Orin (wrapped in SSH)
 SSH_PRE="sshpass -p '${JETSON_PASSWORD}' ssh -tt ${JETSON_USER}@${JETSON_IP}"
+SSH_CMD="sshpass -p '${JETSON_PASSWORD}' ssh ${JETSON_USER}@${JETSON_IP}"
 ROS_SRC="source ~/ros2_ws/install/setup.bash"
 
+# Cleanup function to kill all ROS processes on Jetson
+cleanup_jetson() {
+    echo "Cleaning up Jetson ROS processes..."
+    $SSH_CMD "pkill -f 'ros2|rtabmap|nav2|zed' 2>/dev/null || true"
+    echo "Cleanup complete."
+}
+
 # 1. RTABMAP (Immediate)
-CMD_1="${SSH_PRE} '${ROS_SRC} && ros2 launch kratos_rtabmap kratos_rtabmap.launch.py; exec bash'"
+CMD_1="${SSH_PRE} '${ROS_SRC} && ros2 launch kratos_rtabmap kratos_rtabmap.launch.py'"
 
 # 2. TF (5s delay)
-CMD_2="${SSH_PRE} '${ROS_SRC} && echo \"Waiting 5s...\" && sleep 5 && ros2 run tf2_ros static_transform_publisher -0.4 0.0 0.0 0.0 0.0 0.0 zed_camera_link base_link; exec bash'"
+CMD_2="${SSH_PRE} '${ROS_SRC} && echo \"Waiting 5s...\" && sleep 5 && ros2 run tf2_ros static_transform_publisher -0.4 0.0 0.0 0.0 0.0 0.0 zed_camera_link base_link'"
 
 # 3. NAV2 (5s + 3s = 8s delay)
-CMD_3="${SSH_PRE} '${ROS_SRC} && echo \"Waiting 8s...\" && sleep 8 && ros2 launch kratos_nav2 kratos_nav2.launch.py; exec bash'"
+CMD_3="${SSH_PRE} '${ROS_SRC} && echo \"Waiting 8s...\" && sleep 8 && ros2 launch kratos_nav2 kratos_nav2.launch.py'"
 
 # 4. VEL CLAMP (No delay specified, running immediately/parallel)
-CMD_4="${SSH_PRE} '${ROS_SRC} && ros2 run kratos_vel_clamp velclamp.py; exec bash'"
+CMD_4="${SSH_PRE} '${ROS_SRC} && ros2 run kratos_vel_clamp velclamp.py'"
 
 # Ensure Session Exists
 if ! tmux has-session -t $SESSION 2>/dev/null; then
@@ -34,9 +42,21 @@ if ! tmux has-session -t $SESSION 2>/dev/null; then
     tmux new-session -d -s $SESSION
     tmux rename-window -t $SESSION:0 'MissionControl'
 
+    # Kill session when last client detaches
+    tmux set-option -t $SESSION destroy-unattached on
+
     # Enable Panel Titles
     tmux set -t $SESSION pane-border-status top
     tmux set -t $SESSION pane-border-format "#{pane_index}: #{pane_title}"
+    
+    # Start background cleanup monitor
+    (
+        while tmux has-session -t $SESSION 2>/dev/null; do
+            sleep 1
+        done
+        # Session is gone, cleanup remote processes
+        cleanup_jetson
+    ) &
 
     # Setup 2x2 Grid
     # Pane 0 is top-left

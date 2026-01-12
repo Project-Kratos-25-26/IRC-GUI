@@ -1,23 +1,62 @@
-// --- TAB SWITCHING ---
+// Tab Switching
+let currentActiveTab = 'tab-recon'; // Default in index.html
+
 function openTab(id) {
+    currentActiveTab = id;
     document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
     document.getElementById(id).classList.add('active');
 
-    // Highlight button based on ID
-    // (Simple logic to find button by index for this specific HTML structure)
     const btnIndex = ['tab-setup', 'tab-health', 'tab-recon', 'tab-mission', 'tab-arm'].indexOf(id);
     if (btnIndex >= 0) document.querySelectorAll('.tab-btn')[btnIndex].classList.add('active');
 
-    // Fix map rendering bug when unhiding div
     if (id === 'tab-mission' && typeof map !== 'undefined') {
         setTimeout(() => map.invalidateSize(), 200);
     }
+
+    // Manage Video Connections (Lazy Load + Active Only)
+    manageVideoStreams();
+}
+
+// --- VIDEO CONNECTION MANAGEMENT ---
+function manageVideoStreams() {
+    // Find all camera images
+    const cams = document.querySelectorAll('img.camera-feed');
+    cams.forEach(img => {
+        const parentTab = img.closest('.tab-pane');
+
+        // 1. Check if Tab is Active
+        if (parentTab && parentTab.id === currentActiveTab) {
+
+            // 2. Check if Camera is Globally Active (and we have a configured source)
+            const camName = img.dataset.cameraName;
+            if (img.dataset.streamPath && camName) {
+
+                // If backend says this camera is active, ENABLE stream
+                if (activeCameras.includes(camName)) {
+                    // Restore stream if needed
+                    if (!img.src.endsWith(img.dataset.streamPath)) {
+                        img.src = img.dataset.streamPath;
+                        img.style.opacity = '1'; // Ensure visible
+                    }
+                } else {
+                    // Backend says inactive: DISABLE stream to save bandwidth/connections
+                    // And show "NO SIGNAL" alt text
+                    img.removeAttribute('src');
+                    img.style.opacity = '0.5'; // Dim it to indicate offline state visually
+                }
+            }
+        } else {
+            // Tab is hidden: DISABLE stream
+            img.removeAttribute('src');
+        }
+    });
 }
 
 // --- COMMAND SENDERS ---
 let raspiStatus = "OFFLINE";
 let jetsonStatus = "OFFLINE";
+let activeCameras = []; // List of active cameras from Go server (Global)
 
 function sendCmd(cmd) {
     if ((cmd === 'PROCEED') && raspiStatus !== 'ONLINE') {
@@ -31,11 +70,9 @@ function sendCmd(cmd) {
 }
 
 function sendSysCommand(cmd) {
-    // Blocking check for init and mode commands
     const blockedCmds = ['init_drive', 'init_ld', 'init_arm', 'manual_mode', 'auto_mode'];
     if (blockedCmds.includes(cmd) && raspiStatus !== 'ONLINE') {
         alert("Cannot Execute: Raspberry Pi is OFFLINE!");
-        // Revert radio button if needed (simple fix: user sees alert, radio stays checked but cmd not sent. acceptable for now)
         return;
     }
 
@@ -114,32 +151,135 @@ function sendArmPreset(pose) {
     armPub.publish(new ROSLIB.Message({ data: `PRESET:${pose}` }));
 }
 
-// --- HEALTH DISPLAY ---
-window.renderHealth = function (data) {
-    const list = document.getElementById('health-list');
-    let html = "";
+// --- CAMERA LOGIC ---
+function initCameraSystem() {
+    const selects = document.querySelectorAll('.cam-select');
+    const sources = Object.keys(CONFIG.CAMERA_SOURCES);
 
-    // Update Main Health Tab
-    for (const [k, v] of Object.entries(data.pings)) {
-        html += `<div class="health-row"><span>${k}</span><span class="${v ? 'health-ok' : 'health-err'}">${v ? 'ONLINE' : 'OFFLINE'}</span></div>`;
+    selects.forEach(sel => {
+        sel.innerHTML = "";
+        sources.forEach(src => {
+            const opt = document.createElement('option');
+            opt.value = src;
+            opt.textContent = src;
+            sel.appendChild(opt);
+        });
+    });
 
-        // Update Recon/Mission Tabs
-        const color = v ? 'lime' : 'red';
-        const text = v ? 'ONLINE' : 'OFFLINE';
+    // Set specific defaults
+    setSelectDefault('cam-recon-1', 'Camera 1');
+    setSelectDefault('cam-recon-2', 'Camera 2');
+    setSelectDefault('cam-recon-3', 'Camera 3');
+    setSelectDefault('cam-recon-4', 'Camera 4');
+    setSelectDefault('cam-recon-zed', 'Camera 5');
 
-        // Recon
-        const elRecon = document.getElementById(`status-${k.toLowerCase()}-recon`);
-        if (elRecon) { elRecon.style.color = color; elRecon.textContent = text; }
-
-        // Mission
-        const elMission = document.getElementById(`status-${k.toLowerCase()}-mission`);
-        if (elMission) { elMission.style.color = color; elMission.textContent = text; }
-    }
-    for (const [k, v] of Object.entries(data.topics)) {
-        html += `<div class="health-row"><span>${k}</span><span class="${v == 'OK' ? 'health-ok' : 'health-err'}">${v}</span></div>`;
-    }
-    list.innerHTML = html;
+    setSelectDefault('cam-arm-1', 'Camera 5');
+    setSelectDefault('cam-arm-2', 'Camera 6');
+    setSelectDefault('cam-arm-3', 'Camera 1');
 }
+
+function setSelectDefault(imgId, sourceName) {
+    // Find select sibling to imgId
+    const img = document.getElementById(imgId);
+    if (!img) return;
+    const sel = img.parentElement.querySelector('select');
+    if (sel) {
+        sel.value = sourceName;
+        // Trigger update to set data attribute
+        updateCamera(imgId, sourceName);
+    }
+}
+
+window.updateCamera = function (imgId, sourceKey) {
+    const img = document.getElementById(imgId);
+    if (!img) return;
+
+    const source = CONFIG.CAMERA_SOURCES[sourceKey];
+    if (!source) return;
+
+    // Save configuration
+    const streamPath = `/video_feed/${source.id}`;
+    img.dataset.streamPath = streamPath;
+    img.dataset.cameraName = sourceKey; // Save "Camera 1" etc.
+
+    // Trigger explicit update
+    manageVideoStreams();
+}
+
+// Initialize camera system on load
+setTimeout(() => {
+    initCameraSystem();
+    pollCameraStatus(); // Initial poll to get active status immediately
+}, 500);
+
+const ALL_CAMS = ["Camera 1", "Camera 2", "Camera 3", "Camera 4", "Camera 5", "Camera 6"];
+
+function pollCameraStatus() {
+    Promise.all([
+        fetch('/health').then(r => r.json()).catch(() => null),
+        fetch('/active_cameras').then(r => r.json()).catch(() => [])
+    ]).then(([health, activeCams]) => {
+        // UPDATE GLOBAL STATE
+        activeCameras = activeCams || [];
+
+        // Refresh Video Streams (Dynamic Active/Inactive toggling)
+        manageVideoStreams();
+
+        // --- HEALTH UI UPDATE ---
+        try {
+            const camHealth = document.getElementById('health-cameras');
+            if (!camHealth) return; // If not on same page or element missing
+
+            let html = "<h4 style='margin-bottom:15px; color:#ddd; border-bottom:1px solid #444; padding-bottom:10px;'>Camera System Health</h4>";
+
+            const recvStatus = health ? health.status.toUpperCase() : "OFFLINE";
+            const recvColor = recvStatus === 'OK' ? '#2ecc71' : '#e74c3c';
+
+            html += `
+            <div style="display:flex; gap:20px; margin-bottom:20px;">
+                <div class="card card-compact" style="flex:1; background:#222; border:1px solid #444; padding:15px; text-align:center;">
+                    <div style="font-size:12px; color:#aaa; margin-bottom:5px;">RECEIVER STATUS</div>
+                    <div style="font-size:18px; font-weight:bold; color:${recvColor}">${recvStatus}</div>
+                </div>
+                <div class="card card-compact" style="flex:1; background:#222; border:1px solid #444; padding:15px; text-align:center;">
+                    <div style="font-size:12px; color:#aaa; margin-bottom:5px;">ACTIVE STREAMS</div>
+                    <div style="font-size:18px; font-weight:bold; color:cyan">${activeCameras.length} / 6</div>
+                </div>
+            </div>`;
+
+            // Camera Grid
+            html += "<div style='display:grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap:10px; margin-top:15px;'>";
+
+            ALL_CAMS.forEach(cam => {
+                const isActive = activeCameras.includes(cam);
+                const bgColor = isActive ? 'rgba(46, 204, 113, 0.15)' : 'rgba(231, 76, 60, 0.1)';
+                const borderColor = isActive ? '#27ae60' : '#444';
+                const iconColor = isActive ? '#2ecc71' : '#555';
+                const statusText = isActive ? 'ONLINE' : 'NO SIGNAL';
+                const statusColor = isActive ? '#2ecc71' : '#7f8c8d';
+
+                html += `
+                <div style="background:${bgColor}; border:1px solid ${borderColor}; border-radius:6px; padding:10px; display:flex; flex-direction:column; align-items:center;">
+                    <div style="margin-bottom:5px; color:${iconColor}; font-size:20px;"><i class="fas fa-video"></i></div>
+                    <div style="font-weight:bold; font-size:14px; margin-bottom:2px;">${cam}</div>
+                    <div style="font-size:10px; letter-spacing:1px; color:${statusColor}">${statusText}</div>
+                </div>`;
+            });
+
+            html += "</div>";
+            html += `<div style="font-size:10px; color:#555; margin-top:10px; text-align:right;">Last Updated: ${new Date().toLocaleTimeString()}</div>`;
+
+            camHealth.innerHTML = html;
+        } catch (e) {
+            console.error("Health UI Crash:", e);
+            // Optional: Show error on UI
+            // document.getElementById('health-cameras').innerHTML = `<div style="color:red">UI CRASH: ${e.message}</div>`;
+        }
+    }); // End Promise.all
+}
+
+// Poll cameras
+setInterval(pollCameraStatus, 2000);
 
 function addMissionLog(text) {
     const ul = document.getElementById('mission-log');
@@ -150,8 +290,9 @@ function addMissionLog(text) {
     }
 }
 
-// Set Video Source
-document.getElementById('video-stream').src = CONFIG.VIDEO_URL;
+// Set Video Source (Legacy - element may not exist)
+const videoStream = document.getElementById('video-stream');
+if (videoStream) videoStream.src = CONFIG.VIDEO_URL;
 
 // --- CONTROLLER VISUALIZATION ---
 // --- VECTOR VISUALIZATION ---
@@ -270,8 +411,8 @@ window.updateVectorVis = function (joy, vel, local_calc) {
     const vecSwap = document.getElementById("vec-swap")?.checked;
 
     // 1. RAW JOYSTICK VECTOR (Yellow) - From Thrustmaster
-    // Raw joystick values are -1 to 1, scale to fit in canvas (max radius ~90px)
-    const maxRadius = 90; // Leave margin for arrow head
+    // Raw joystick values are -1 to 1, scale to fit in canvas
+    const maxRadius = 60; // Fits in 150x150 canvas (center=75, margin for arrow)
     if (joy && joy.length >= 2) {
         let rawX = joy[0] || 0;
         let rawY = joy[1] || 0;
@@ -494,8 +635,23 @@ function pollTelemetry() {
                 healthJetson.style.color = data.jetson === 'ONLINE' ? 'lime' : 'red';
             }
         })
+
         .catch(e => {
-            // Silently fail - status will stay as default
+            raspiStatus = 'OFFLINE';
+            jetsonStatus = 'OFFLINE';
+
+            const els = [
+                'status-raspi-recon', 'status-raspi-mission', 'health-raspi',
+                'status-jetson-recon', 'status-jetson-mission', 'health-jetson'
+            ];
+
+            els.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.textContent = 'OFFLINE';
+                    el.style.color = 'red';
+                }
+            });
         });
 }
 
@@ -503,10 +659,7 @@ function pollTelemetry() {
 setInterval(pollTelemetry, 2000); // 2Hz is enough for status
 pollTelemetry(); // Initial call
 
+
 // --- CONTROLLER VISUALIZATION ---
 // Visualization is handled by ROS subscriptions in ros_module.js
 // via rosbridge websocket (/joy0 for Thrustmaster, /joy for PS5)
-
-// Init Camera 2
-const cam2 = document.getElementById('video-stream-ld');
-if (cam2) cam2.src = CONFIG.VIDEO_URL;

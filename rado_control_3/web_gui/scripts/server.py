@@ -1,0 +1,233 @@
+#!/usr/bin/env python3
+"""
+Unified Web GUI Server
+Serves static files and camera MJPEG streams on port 8001.
+"""
+
+import os
+import cv2
+import time
+import threading
+import numpy as np
+from flask import Flask, Response, send_from_directory, jsonify
+
+import gi
+gi.require_version('Gst', '1.0')
+from gi.repository import Gst, GLib
+
+# Flask app
+app = Flask(__name__)
+Gst.init(None)
+
+# Directory containing static files (parent of scripts/)
+STATIC_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+class GStreamerVideo:
+    """GStreamer pipeline manager for a single camera stream."""
+    
+    def __init__(self, pipeline_str):
+        self.pipeline_str = pipeline_str
+        self.pipeline = None
+        self.video_sink = None
+        self.latest_frame = None
+        self.last_frame_time = 0
+        self.running = False
+        self.lock = threading.Lock()
+
+    def start(self):
+        self.pipeline = Gst.parse_launch(self.pipeline_str)
+        self.video_sink = self.pipeline.get_by_name("appsink0")
+        
+        self.video_sink.set_property("emit-signals", True)
+        self.video_sink.set_property("max-buffers", 1)
+        self.video_sink.set_property("drop", True)
+        self.video_sink.set_property("sync", False)
+        self.video_sink.connect("new-sample", self.on_new_sample)
+        
+        self.pipeline.set_state(Gst.State.PLAYING)
+        self.running = True
+        
+        self.loop = GLib.MainLoop()
+        self.thread = threading.Thread(target=self.loop.run, daemon=True)
+        self.thread.start()
+
+    def on_new_sample(self, sink):
+        sample = sink.emit("pull-sample")
+        if not sample:
+            return Gst.FlowReturn.OK
+        
+        buffer = sample.get_buffer()
+        caps = sample.get_caps()
+        structure = caps.get_structure(0)
+        
+        width = structure.get_value("width")
+        height = structure.get_value("height")
+        
+        success, map_info = buffer.map(Gst.MapFlags.READ)
+        if not success:
+            return Gst.FlowReturn.OK
+        
+        frame = np.ndarray(
+            shape=(height, width, 3),
+            dtype=np.uint8,
+            buffer=map_info.data
+        )
+        
+        with self.lock:
+            self.latest_frame = frame.copy()
+            self.last_frame_time = time.time()
+        
+        buffer.unmap(map_info)
+        return Gst.FlowReturn.OK
+
+    def get_frame(self):
+        with self.lock:
+            return None if self.latest_frame is None else self.latest_frame.copy()
+
+    def is_active(self):
+        """Check if camera has received a frame recently (5s timeout)."""
+        with self.lock:
+            return (time.time() - self.last_frame_time) < 5.0
+
+    def stop(self):
+        self.running = False
+        if self.pipeline:
+            self.pipeline.set_state(Gst.State.NULL)
+        if hasattr(self, "loop"):
+            self.loop.quit()
+        if hasattr(self, "thread"):
+            self.thread.join(timeout=2)
+
+
+# Camera pipeline definitions (UDP ports 9000-9005)
+CAMERA_PIPELINES = {
+    "Camera 1": (
+        "udpsrc port=9000 ! application/x-rtp,payload=96,encoding-name=H265 ! "
+        "rtph265depay ! h265parse ! avdec_h265 ! videoconvert ! "
+        "video/x-raw,format=BGR ! appsink name=appsink0 sync=false max-buffers=1 drop=true"
+    ),
+    "Camera 2": (
+        "udpsrc port=9001 ! application/x-rtp,payload=96,encoding-name=H265 ! "
+        "rtph265depay ! h265parse ! avdec_h265 ! videoconvert ! "
+        "video/x-raw,format=BGR ! appsink name=appsink0 sync=false max-buffers=1 drop=true"
+    ),
+    "Camera 3": (
+        "udpsrc port=9002 ! application/x-rtp,payload=96,encoding-name=H265 ! "
+        "rtph265depay ! h265parse ! avdec_h265 ! videoconvert ! "
+        "video/x-raw,format=BGR ! appsink name=appsink0 sync=false max-buffers=1 drop=true"
+    ),
+    "Camera 4": (
+        "udpsrc port=9003 ! application/x-rtp,payload=96,encoding-name=H265 ! "
+        "rtph265depay ! h265parse ! avdec_h265 ! videoconvert ! "
+        "video/x-raw,format=BGR ! appsink name=appsink0 sync=false max-buffers=1 drop=true"
+    ),
+    "Camera 5": (
+        "udpsrc port=9004 ! application/x-rtp,payload=96,encoding-name=H265 ! "
+        "rtph265depay ! h265parse ! avdec_h265 ! videoconvert ! "
+        "video/x-raw,format=BGR ! appsink name=appsink0 sync=false max-buffers=1 drop=true"
+    ),
+    "Camera 6": (
+        "udpsrc port=9005 ! application/x-rtp,payload=96,encoding-name=H265 ! "
+        "rtph265depay ! h265parse ! avdec_h265 ! videoconvert ! "
+        "video/x-raw,format=BGR ! appsink name=appsink0 sync=false max-buffers=1 drop=true"
+    )
+}
+
+camera_instances = {}
+
+
+def generate_frames(camera):
+    """Generator that yields MJPEG frames."""
+    target_fps = 10
+    interval = 1.0 / target_fps
+    
+    while camera.running:
+        start = time.time()
+        frame = camera.get_frame()
+        
+        if frame is None:
+            time.sleep(0.01)
+            continue
+        
+        _, buffer = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 75])
+        
+        yield (
+            b"--frame\r\n"
+            b"Content-Type: image/jpeg\r\n\r\n" +
+            buffer.tobytes() +
+            b"\r\n"
+        )
+        
+        elapsed = time.time() - start
+        if elapsed < interval:
+            time.sleep(interval - elapsed)
+
+
+# --- ROUTES ---
+
+@app.route("/active_cameras")
+def active_cameras():
+    """Return list of currently active camera streams (received data within 5s)."""
+    # List active cameras
+    active = [name for name, cam in camera_instances.items() if cam.running and cam.is_active()]
+    return jsonify(list(active))
+
+
+@app.route("/health")
+def health():
+    """Health check endpoint."""
+    active_count = sum(1 for cam in camera_instances.values() if cam.running and cam.is_active())
+    return jsonify({"status": "ok", "cameras": active_count})
+
+
+@app.route("/video_feed/<camera_name>")
+def video_feed(camera_name):
+    """Serve MJPEG stream for a specific camera."""
+    if camera_name not in camera_instances:
+        pipeline = CAMERA_PIPELINES.get(camera_name)
+        if not pipeline:
+            return "Camera not found", 404
+        
+        cam = GStreamerVideo(pipeline)
+        cam.start()
+        camera_instances[camera_name] = cam
+    
+    return Response(
+        generate_frames(camera_instances[camera_name]),
+        mimetype="multipart/x-mixed-replace; boundary=frame"
+    )
+
+
+@app.route("/")
+def index():
+    return send_from_directory(STATIC_DIR, "index.html")
+
+
+@app.route("/<path:path>")
+def static_files(path):
+    return send_from_directory(STATIC_DIR, path)
+
+
+def init_all_cameras():
+    """Start all camera pipelines immediately to listen for streams."""
+    print("Initializing all camera pipelines...")
+    for name, pipeline in CAMERA_PIPELINES.items():
+        if name not in camera_instances:
+            print(f"Starting pipeline for {name}...")
+            cam = GStreamerVideo(pipeline)
+            cam.start()
+            camera_instances[name] = cam
+    print("All cameras initialized.")
+
+
+if __name__ == "__main__":
+    try:
+        init_all_cameras()
+        print(f"Serving from: {STATIC_DIR}")
+        print("Server starting on http://0.0.0.0:8001")
+        app.run(host="0.0.0.0", port=8001, debug=False, threaded=True)
+    finally:
+        print("Shutting down...")
+        for camera in camera_instances.values():
+            camera.stop()
