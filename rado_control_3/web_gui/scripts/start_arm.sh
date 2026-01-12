@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
 set -e
 
-# Source Config and Utils
-source "$(dirname "$0")/../config/config.sh"
-source "$(dirname "$0")/utils.sh"
+RASPI_USER="kratos"
+RASPI_IP="192.168.1.16"
+PASS="kratos123"
+SESSION="rover_ui"
 
-PASS="$RASPI_PASS"
-SESSION="$TMUX_SESSION"
-
-CMD_MICROROS="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyUSB1'"
-CMD_ARM="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && export PYTHONUNBUFFERED=1 && ros2 run arm_controls arm_mapping'"
+CMD_MICROROS="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyUSB1; exec bash'"
+CMD_ARM="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && export PYTHONUNBUFFERED=1 && ros2 run arm_controls arm_mapping; exec bash'"
 
 if ! tmux has-session -t $SESSION 2>/dev/null; then
     /usr/bin/env bash $(dirname "$0")/start_drive.sh
@@ -51,5 +49,5 @@ P_TOP=$(tmux display-message -p "#{pane_id}")
 ) & disown
 
 if ! pgrep -f "tmux attach -t $SESSION" > /dev/null; then
-    launch_terminal "Rover: Unified Control" "tmux attach -t $SESSION"
+    x-terminal-emulator -T "Rover: Unified Control" -e "tmux attach -t $SESSION" &
 fi
