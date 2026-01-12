@@ -1,45 +1,22 @@
 #!/usr/bin/env bash
 set -e
 
-# Source Config and Utils
-source "$(dirname "$0")/../config/config.sh"
-source "$(dirname "$0")/utils.sh"
+RASPI_USER="kratos"
+RASPI_IP="192.168.1.16"
+PASS="kratos123"
+SESSION="rover_ui"
 
-SESSION="$TMUX_SESSION"
-PASS="$RASPI_PASS"
-
-CMD_MICROROS="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyUSB0'"
-CMD_DRIVE="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && export PYTHONUNBUFFERED=1 && ros2 run drive_controls drive.py'"
-SSH_CMD="sshpass -p '$PASS' ssh $RASPI_USER@$RASPI_IP"
-
-
-# Cleanup function to kill all ROS processes on Raspberry Pi
-cleanup_raspi() {
-    echo "Cleaning up Raspberry Pi ROS processes..."
-    $SSH_CMD "pkill -f 'ros2|micro_ros|drive|teleop' 2>/dev/null || true"
-    echo "Cleanup complete."
-}
+CMD_MICROROS="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyUSB0; exec bash'"
+CMD_DRIVE="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && export PYTHONUNBUFFERED=1 && ros2 run drive_controls drive.py; exec bash'"
 
 # 1. Ensure Session Exists
 if ! tmux has-session -t $SESSION 2>/dev/null; then
     tmux new-session -d -s $SESSION
     tmux rename-window -t $SESSION:0 'RoverControl'
     
-    # Kill session when last client detaches
-    tmux set-option -t $SESSION destroy-unattached on
-    
     # Enable Panel Titles
     tmux set -t $SESSION pane-border-status top
     tmux set -t $SESSION pane-border-format "#{pane_index}: #{pane_title}"
-    
-    # Start background cleanup monitor
-    (
-        while tmux has-session -t $SESSION 2>/dev/null; do
-            sleep 1
-        done
-        # Session is gone, cleanup remote processes
-        cleanup_raspi
-    ) &
     
     # Split Col 1 (Drive)
     tmux split-window -v -t $SESSION:0
@@ -57,6 +34,15 @@ if ! tmux has-session -t $SESSION 2>/dev/null; then
     tmux respawn-pane -k -t $SESSION:0.1 "bash"
     tmux send-keys -t $SESSION:0.1 "$CMD_DRIVE" C-m
     P_BOT=$(tmux display-message -p -t $SESSION:0.1 "#{pane_id}")
+
+    # Launch Monitor Loop for Drive Column
+    (
+        while tmux list-panes -t "$P_TOP" >/dev/null 2>&1 && tmux list-panes -t "$P_BOT" >/dev/null 2>&1; do
+            sleep 1
+        done
+        tmux kill-pane -t "$P_TOP" 2>/dev/null
+        tmux kill-pane -t "$P_BOT" 2>/dev/null
+    ) & disown
 
 else
     # Session exists.
@@ -82,7 +68,7 @@ if [ -n "$TELEOP_PANE_ID" ]; then
 fi
 
 if ! pgrep -f "tmux attach -t $SESSION" > /dev/null; then
-    launch_terminal "Rover: Unified Control" "tmux attach -t $SESSION"
+    x-terminal-emulator -T "Rover: Unified Control" -e "tmux attach -t $SESSION" &
 fi
 
 datadir="$(cd "$(dirname "$0")" && pwd)/../data"

@@ -1,11 +1,10 @@
 #!/bin/bash
 
 MODE="$1"
-# Source Config
-source "$(dirname "$0")/../config/config.sh"
-
-PASS="$RASPI_PASS"
-SESSION="$TMUX_SESSION"
+RASPI_USER="kratos"
+RASPI_IP="192.168.1.16"
+PASS="kratos123"
+SESSION="rover_ui"
 
 echo "Switching to mode: $MODE"
 
