@@ -9,7 +9,7 @@ import cv2
 import time
 import threading
 import numpy as np
-from flask import Flask, Response, send_from_directory, jsonify
+from flask import Flask, Response, send_from_directory, jsonify, request
 
 import gi
 gi.require_version('Gst', '1.0')
@@ -21,6 +21,12 @@ Gst.init(None)
 
 # Directory containing static files (parent of scripts/)
 STATIC_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Mission plan file path
+MISSION_PLAN_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    'config', 'mission_plan.txt'
+)
 
 
 class GStreamerVideo:
@@ -179,6 +185,51 @@ def health():
     """Health check endpoint."""
     active_count = sum(1 for cam in camera_instances.values() if cam.running and cam.is_active())
     return jsonify({"status": "ok", "cameras": active_count})
+
+
+@app.route("/api/mission_plan")
+def get_mission_plan():
+    """Return mission plan data structured for the GUI grid display."""
+    result = {
+        'pickup': {'red': [], 'green': [], 'blue': [], 'yellow': []},
+        'dropoff': {'red': [], 'green': [], 'blue': [], 'yellow': []}
+    }
+    
+    try:
+        if os.path.exists(MISSION_PLAN_PATH):
+            with open(MISSION_PLAN_PATH, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    parts = line.split(',')
+                    if len(parts) >= 4:
+                        try:
+                            obj_type = parts[0].lower().strip()
+                            color = parts[1].lower().strip()
+                            lat = float(parts[2])
+                            lon = float(parts[3])
+                            
+                            if obj_type in result and color in result[obj_type]:
+                                result[obj_type][color].append({'lat': lat, 'lon': lon})
+                        except (ValueError, IndexError):
+                            continue
+    except Exception as e:
+        print(f"Error reading mission plan: {e}")
+    
+    return jsonify(result)
+
+
+@app.route("/api/mission_plan/clear", methods=['POST'])
+def clear_mission_plan():
+    """Clear the mission plan file."""
+    try:
+        with open(MISSION_PLAN_PATH, 'w') as f:
+            f.write("")
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error clearing mission plan: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route("/video_feed/<camera_name>")

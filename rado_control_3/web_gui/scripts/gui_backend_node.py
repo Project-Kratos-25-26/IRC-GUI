@@ -81,21 +81,17 @@ class GuiBackend(Node):
 
     def log_callback(self, msg):
         try:
-            # Format: Object|Color|Lat|Lon
+            # Format: Type|Color|Lat|Lon (e.g., pickup|RED|12.345|67.890)
             parts = msg.data.split('|')
             if len(parts) >= 4:
-                raw_obj, raw_color, lat, lon = parts[0], parts[1], parts[2], parts[3]
+                raw_type, raw_color, lat, lon = parts[0], parts[1], parts[2], parts[3]
                 
-                # Validation & Mapping
-                obj_map = {
-                    "OBJECT_1": "pickup",
-                    "DELIVERY_1": "dropoff"
-                }
-                obj = obj_map.get(raw_obj, raw_obj.lower())
-                color = raw_color.lower()
+                # Type is already 'pickup' or 'dropoff' from the new dropdown
+                obj_type = raw_type.lower().strip()
+                color = raw_color.lower().strip()
                 
                 # CSV Format: type,color,lat,lon
-                line = f"{obj},{color},{lat},{lon}\n"
+                line = f"{obj_type},{color},{lat},{lon}\n"
                 
                 # Append to file
                 with open(self.mission_file, "a") as f:

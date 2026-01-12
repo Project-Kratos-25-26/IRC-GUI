@@ -119,26 +119,190 @@ function selColor(c) {
 
 function sendLog() {
     if (!selectedColor) { alert("Select Color First!"); return; }
-    const obj = document.getElementById('obj-select').value;
+    const objType = document.getElementById('obj-select').value; // 'pickup' or 'dropoff'
 
     // Get current GPS
     const latStr = document.getElementById('recon-lat').textContent;
     const lonStr = document.getElementById('recon-lon').textContent;
 
-    // Publish Log Request (Format: Object|Color|Lat|Lon)
-    logPub.publish(new ROSLIB.Message({ data: `${obj}|${selectedColor}|${latStr}|${lonStr}` }));
+    // Publish Log Request (Format: Type|Color|Lat|Lon)
+    logPub.publish(new ROSLIB.Message({ data: `${objType}|${selectedColor}|${latStr}|${lonStr}` }));
 
-    const logText = `Logged: ${obj} | Color: ${selectedColor} | Loc: [${latStr}, ${lonStr}]`;
+    const logText = `Logged: ${objType} | Color: ${selectedColor} | Loc: [${latStr}, ${lonStr}]`;
     document.getElementById('log-msg').textContent = logText;
-    console.log(logText); // Print to console as well
+    console.log(logText);
 
     // Add visual marker to map
     const lat = parseFloat(latStr);
     const lon = parseFloat(lonStr);
     if (typeof map !== 'undefined' && lat !== 0) {
-        L.marker([lat, lon]).addTo(map).bindPopup(obj).openPopup();
+        L.marker([lat, lon]).addTo(map).bindPopup(`${objType}: ${selectedColor}`).openPopup();
     }
+
+    // Refresh mission plan display if on mission tab
+    setTimeout(refreshMissionPlan, 500);
 }
+
+// --- MISSION PLAN MANAGEMENT ---
+let missionPlanData = {};
+let selectedGoal = null;
+
+function refreshMissionPlan() {
+    fetch('/api/mission_plan?t=' + Date.now())
+        .then(r => r.json())
+        .then(data => {
+            missionPlanData = data;
+            renderMissionPlanGrid(data);
+        })
+        .catch(e => {
+            console.error("Failed to load mission plan:", e);
+            document.getElementById('mission-plan-grid').innerHTML = 
+                '<div style="color:red; text-align:center; padding:20px;">Failed to load mission plan</div>';
+        });
+}
+
+function renderMissionPlanGrid(data) {
+    const colors = ['red', 'green', 'blue', 'yellow'];
+    const colorLabels = { red: 'RED', green: 'GREEN', blue: 'BLUE', yellow: 'YELLOW' };
+    
+    let html = '';
+    
+    colors.forEach(color => {
+        const pickups = data.pickup?.[color] || [];
+        const dropoffs = data.dropoff?.[color] || [];
+        
+        html += `<div class="mission-row">`;
+        html += `<div class="mission-row-color ${color}">${colorLabels[color]}</div>`;
+        
+        // Pickup column
+        html += `<div class="mission-cell ${pickups.length === 0 ? 'empty' : ''}">`;
+        if (pickups.length === 0) {
+            html += 'No data';
+        } else {
+            pickups.forEach((coord, idx) => {
+                const goalId = `pickup_${color}_${idx}`;
+                const isSelected = selectedGoal && selectedGoal.id === goalId;
+                html += `
+                    <div class="mission-coord-item ${isSelected ? 'selected' : ''}" 
+                         onclick="selectGoal('${goalId}', 'pickup', '${color}', ${coord.lat}, ${coord.lon})">
+                        <input type="radio" name="mission-goal" ${isSelected ? 'checked' : ''}>
+                        <span class="mission-coord-text">${coord.lat.toFixed(6)}, ${coord.lon.toFixed(6)}</span>
+                    </div>`;
+            });
+        }
+        html += `</div>`;
+        
+        // Dropoff column
+        html += `<div class="mission-cell ${dropoffs.length === 0 ? 'empty' : ''}">`;
+        if (dropoffs.length === 0) {
+            html += 'No data';
+        } else {
+            dropoffs.forEach((coord, idx) => {
+                const goalId = `dropoff_${color}_${idx}`;
+                const isSelected = selectedGoal && selectedGoal.id === goalId;
+                html += `
+                    <div class="mission-coord-item ${isSelected ? 'selected' : ''}" 
+                         onclick="selectGoal('${goalId}', 'dropoff', '${color}', ${coord.lat}, ${coord.lon})">
+                        <input type="radio" name="mission-goal" ${isSelected ? 'checked' : ''}>
+                        <span class="mission-coord-text">${coord.lat.toFixed(6)}, ${coord.lon.toFixed(6)}</span>
+                    </div>`;
+            });
+        }
+        html += `</div>`;
+        
+        html += `</div>`;
+    });
+    
+    document.getElementById('mission-plan-grid').innerHTML = html;
+}
+
+function selectGoal(id, type, color, lat, lon) {
+    selectedGoal = { id, type, color, lat, lon };
+    
+    // Update display
+    const display = document.getElementById('selected-goal-display');
+    if (display) {
+        display.innerHTML = `
+            <strong>${type.toUpperCase()}</strong> - 
+            <span style="color: ${color === 'yellow' ? '#f1c40f' : color};">${color.toUpperCase()}</span><br>
+            <span style="font-size:12px; color:#aaa;">Lat: ${lat.toFixed(6)}, Lon: ${lon.toFixed(6)}</span>
+        `;
+    }
+    
+    // Re-render grid to show selection
+    renderMissionPlanGrid(missionPlanData);
+    
+    addMissionLog(`Selected: ${type} ${color} (${lat.toFixed(4)}, ${lon.toFixed(4)})`);
+}
+
+function proceedWithGoal() {
+    if (!selectedGoal) {
+        alert("Please select a goal from the mission plan first!");
+        return;
+    }
+    
+    if (raspiStatus !== 'ONLINE') {
+        alert("Cannot Proceed: Raspberry Pi is OFFLINE!");
+        return;
+    }
+    
+    // Send the goal to the coordinate follower via ROS topic
+    const goalData = `GOAL|${selectedGoal.type}|${selectedGoal.color}|${selectedGoal.lat}|${selectedGoal.lon}`;
+    
+    // Publish to /gcs/command for mission manager
+    const gcsPub = new ROSLIB.Topic({
+        ros: ros,
+        name: '/gcs/command',
+        messageType: 'std_msgs/String'
+    });
+    
+    // First send the goal setup
+    const goalPub = new ROSLIB.Topic({
+        ros: ros,
+        name: '/mission/set_goal',
+        messageType: 'std_msgs/String'
+    });
+    goalPub.publish(new ROSLIB.Message({ data: goalData }));
+    
+    // Then send PROCEED command
+    setTimeout(() => {
+        gcsPub.publish(new ROSLIB.Message({ data: 'PROCEED' }));
+        sysPub.publish(new ROSLIB.Message({ data: 'PROCEED' }));
+    }, 100);
+    
+    addMissionLog(`Proceeding to: ${selectedGoal.type} ${selectedGoal.color}`);
+    updateMode('AUTO');
+}
+
+function clearMissionPlan() {
+    if (!confirm("Are you sure you want to clear all mission data?")) return;
+    
+    fetch('/api/mission_plan/clear', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                selectedGoal = null;
+                document.getElementById('selected-goal-display').textContent = 'No goal selected';
+                refreshMissionPlan();
+                addMissionLog("Mission plan cleared");
+            } else {
+                alert("Failed to clear mission plan");
+            }
+        })
+        .catch(e => {
+            console.error("Failed to clear mission plan:", e);
+            alert("Failed to clear mission plan");
+        });
+}
+
+// Load mission plan when switching to mission tab
+const originalOpenTab = openTab;
+window.openTab = function(id) {
+    originalOpenTab(id);
+    if (id === 'tab-mission') {
+        refreshMissionPlan();
+    }
+};
 
 // --- ARM CONTROLS ---
 function updateArm(jointIndex, value) {

@@ -95,7 +95,7 @@ class ConeFollower(Node):
             pass
 
     def stop_rover(self):
-        self.velocity_pub.publish(Twist())e
+        self.velocity_pub.publish(Twist())
 
     def control_loop(self):
         if not self.active or not self.target_color:

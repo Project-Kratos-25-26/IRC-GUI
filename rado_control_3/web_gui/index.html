@@ -139,13 +139,14 @@
                     <div class="card card-compact" style="padding:8px;">
                         <h3 style="margin-bottom:5px;">Log Target</h3>
                         <select id="obj-select" style="margin-bottom:5px;">
-                            <option>OBJECT_1</option>
-                            <option>DELIVERY_1</option>
+                            <option value="pickup">PICKUP</option>
+                            <option value="dropoff">DROPOFF</option>
                         </select>
-                        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px;">
+                        <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:5px;">
                             <button class="btn-red" onclick="selColor('RED')">R</button>
                             <button class="btn-green" onclick="selColor('GREEN')">G</button>
                             <button class="btn-blue" onclick="selColor('BLUE')">B</button>
+                            <button class="btn-yellow" onclick="selColor('YELLOW')">Y</button>
                         </div>
                         <button class="btn-blue" style="margin-top:5px;" onclick="sendLog()">LOG</button>
                         <div id="log-msg" style="text-align:center; font-size:12px; margin-top:3px;">Ready</div>
@@ -195,12 +196,38 @@
                         onclick="sendSysCommand('init_mission')">INITIALIZE NAV2 & RTABMAP</button>
                     <div id="map"></div>
                 </div>
-                <div class="card">
-                    <button class="btn-green" style="height:80px; margin-bottom:20px;"
-                        onclick="sendCmd('PROCEED')">PROCEED</button>
-                    <button class="btn-red" style="height:80px;" onclick="sendCmd('MANUAL')">STOP</button>
-                    <ul id="mission-log"></ul>
-                    <div style="margin-top:10px; border-top:1px solid #444; padding-top:10px;">
+                <div class="card" style="display:flex; flex-direction:column; gap:10px;">
+                    <!-- Mission Plan Grid -->
+                    <div style="flex:1; overflow-y:auto;">
+                        <h3 style="margin:0 0 10px 0;">Mission Plan</h3>
+                        <div class="mission-grid-header">
+                            <div class="mission-grid-color-label"></div>
+                            <div class="mission-grid-col-header">PICKUP</div>
+                            <div class="mission-grid-col-header">DROPOFF</div>
+                        </div>
+                        <div id="mission-plan-grid" class="mission-plan-grid">
+                            <!-- Dynamic content loaded by JS -->
+                        </div>
+                        <div style="margin-top:10px; display:flex; gap:10px;">
+                            <button class="btn-blue" style="flex:1;" onclick="refreshMissionPlan()">REFRESH</button>
+                            <button class="btn-red" style="flex:1;" onclick="clearMissionPlan()">CLEAR</button>
+                        </div>
+                    </div>
+                    <!-- Selected Goal -->
+                    <div style="border-top:1px solid #444; padding-top:10px;">
+                        <h4 style="margin:0 0 5px 0; color:#aaa;">Selected Goal</h4>
+                        <div id="selected-goal-display" style="background:#222; padding:10px; border-radius:4px; font-size:14px; color:#fff;">
+                            No goal selected
+                        </div>
+                    </div>
+                    <!-- Controls -->
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn-green" style="flex:1; height:60px;" onclick="proceedWithGoal()">PROCEED</button>
+                        <button class="btn-red" style="flex:1; height:60px;" onclick="sendCmd('MANUAL')">STOP</button>
+                    </div>
+                    <!-- Status & Log -->
+                    <ul id="mission-log" style="flex:1; overflow-y:auto; max-height:120px;"></ul>
+                    <div style="border-top:1px solid #444; padding-top:10px;">
                         <div>RASPI: <span id="status-raspi-mission">--</span></div>
                         <div>JETSON: <span id="status-jetson-mission">--</span></div>
                     </div>

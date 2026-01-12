@@ -80,6 +80,10 @@ class MissionManager(Node):
         self.create_subscription(
             String, '/auto/cone_follow/status', self.cone_status_callback, 10
         )
+        # Subscribe to GUI goal selection
+        self.create_subscription(
+            String, '/mission/set_goal', self.set_goal_callback, 10
+        )
 
         # Nav2 Action Client
         self.nav2_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
@@ -135,7 +139,16 @@ class MissionManager(Node):
         
         if command == 'PROCEED':
             if self.internal_state == 'WAITING_FOR_PROCEED':
-                self.select_next_goal()
+                # If we have a manually selected goal, use that
+                if self.current_goal:
+                    self.internal_state = 'WAITING_FOR_AUTONOMOUS'
+                    self.get_logger().info(
+                        f"Proceeding to manually selected goal: {self.current_goal['type']} "
+                        f"{self.current_goal['color']} at ({self.current_goal['lat']:.6f}, "
+                        f"{self.current_goal['lon']:.6f})"
+                    )
+                else:
+                    self.select_next_goal()
         elif command == 'MANUAL':
             self.internal_state = 'WAITING_FOR_PROCEED'
             self.cancel_nav2_goal()
@@ -143,6 +156,33 @@ class MissionManager(Node):
         elif command == 'CANCEL':
             self.cancel_nav2_goal()
             self.internal_state = 'WAITING_FOR_PROCEED'
+
+    def set_goal_callback(self, msg):
+        """Handle goal selection from GUI"""
+        try:
+            # Format: GOAL|type|color|lat|lon
+            parts = msg.data.split('|')
+            if len(parts) >= 5 and parts[0] == 'GOAL':
+                goal_type = parts[1].lower().strip()
+                color = parts[2].lower().strip()
+                lat = float(parts[3])
+                lon = float(parts[4])
+                
+                self.current_goal = {
+                    'type': goal_type,
+                    'color': color,
+                    'lat': lat,
+                    'lon': lon
+                }
+                
+                self.get_logger().info(
+                    f"GUI Goal Set: {goal_type} {color} at ({lat:.6f}, {lon:.6f})"
+                )
+                self.internal_state = 'WAITING_FOR_PROCEED'
+            else:
+                self.get_logger().warn(f"Invalid goal format: {msg.data}")
+        except Exception as e:
+            self.get_logger().error(f"Failed to parse goal: {e}")
 
     def select_next_goal(self):
         """Select the next goal in mission sequence"""
