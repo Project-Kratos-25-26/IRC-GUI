@@ -2,9 +2,12 @@
 set -e
 
 # Jetson Orin Configuration
-JETSON_USER="kratos"
-JETSON_IP="192.168.1.10"
-JETSON_PASSWORD="kratos123"
+# Source Config and Utils
+source "$(dirname "$0")/../config/config.sh"
+source "$(dirname "$0")/utils.sh"
+
+JETSON_PASSWORD="$JETSON_PASS"
+SESSION="mission_ui"
 SESSION="mission_ui"
 
 echo "================================="
@@ -140,7 +143,7 @@ fi
 
 # Bring to foreground if running in a GUI terminal context
 if ! pgrep -f "tmux attach -t $SESSION" > /dev/null; then
-    x-terminal-emulator -T "Mission: Unified Control" -e "tmux attach -t $SESSION" &
+    launch_terminal "Mission: Unified Control" "tmux attach -t $SESSION"
 fi
 
 echo "Done."

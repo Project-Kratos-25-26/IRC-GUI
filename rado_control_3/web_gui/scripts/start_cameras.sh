@@ -2,9 +2,11 @@
 # Start camera streaming system
 # This script SSHs into Jetson to start the Go camera server
 
-JETSON_USER="kratos"
-JETSON_IP="192.168.1.10"
-JETSON_PASSWORD="kratos123"
+# Source Config
+source "$(dirname "$0")/../config/config.sh"
+
+JETSON_PASSWORD="$JETSON_PASS"
+# JETSON_USER and JETSON_IP are already exported by config.sh
 GO_DIR="~/go_cams/go-cams-gstreamer"
 
 echo "[CAMERAS] Starting camera streaming system..."

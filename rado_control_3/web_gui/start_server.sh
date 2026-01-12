@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 cd "$(dirname "$0")"
 
+# Source centralized configuration and utilities
+source "config/config.sh"
+source "scripts/utils.sh"
+
+# Check dependencies before starting
+check_dependencies
+
 # Trap to kill background processes on exit
 cleanup() {
     echo ""
@@ -28,6 +35,8 @@ ros2 run joy joy_node --ros-args \
   > "data/joy0.log" 2>&1 &
 
 # 🕹️ Node 2: Sony Wireless Controller
+# Note: Ensure config.sh has correct device names or use generic defaults if needed? 
+# For now, keeping hardcoded device names as they are specific to the controllers, not the laptop.
 ros2 run joy joy_node --ros-args \
   -r __node:=joy \
   -p device_name:="Sony Interactive Entertainment Wireless Controller" \
@@ -60,8 +69,8 @@ echo "------------------------------"
 # ---- Background Ping Loop for RASPI and Jetson ----
 echo "[LOCAL] Starting Heartbeat..."
 (
-    RASPI_IP="192.168.1.16"
-    JETSON_IP="192.168.1.10"
+    # IPs loaded from config.sh
+
     
     while true; do
         # Ping RASPI

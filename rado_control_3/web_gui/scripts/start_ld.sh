@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 set -e
 
-RASPI_USER="kratos"
-RASPI_IP="192.168.1.16"
-PASS="kratos123"
-SESSION="rover_ui"
+# Source Config and Utils
+source "$(dirname "$0")/../config/config.sh"
+source "$(dirname "$0")/utils.sh"
+
+PASS="$RASPI_PASS"
+SESSION="$TMUX_SESSION"
 
 CMD_MICROROS="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyUSB1'"
 CMD_LD="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && export PYTHONUNBUFFERED=1 && ros2 run ld_controls ld_mapping'"
@@ -51,5 +53,5 @@ P_TOP=$(tmux display-message -p "#{pane_id}")
 ) & disown
 
 if ! pgrep -f "tmux attach -t $SESSION" > /dev/null; then
-    x-terminal-emulator -T "Rover: Unified Control" -e "tmux attach -t $SESSION" &
+    launch_terminal "Rover: Unified Control" "tmux attach -t $SESSION"
 fi
