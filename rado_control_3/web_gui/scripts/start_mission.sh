@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -e
 
 # Jetson Orin Configuration
 JETSON_USER="kratos"
@@ -28,44 +28,94 @@ CMD_3="${SSH_PRE} '${ROS_SRC} && echo \"Waiting 8s...\" && sleep 8 && ros2 launc
 # 4. VEL CLAMP (No delay specified, running immediately/parallel)
 CMD_4="${SSH_PRE} '${ROS_SRC} && ros2 run kratos_vel_clamp velclamp.py; exec bash'"
 
-# Ensure single session instance
+# Ensure Session Exists
 if ! tmux has-session -t $SESSION 2>/dev/null; then
     echo "Creating new session: $SESSION"
     tmux new-session -d -s $SESSION
     tmux rename-window -t $SESSION:0 'MissionControl'
 
+    # Enable Panel Titles
+    tmux set -t $SESSION pane-border-status top
+    tmux set -t $SESSION pane-border-format "#{pane_index}: #{pane_title}"
+
+    # Setup 2x2 Grid
+    # Pane 0 is top-left
+    # Split horizontally to get Pane 1 (top-right)
+    tmux split-window -h -t $SESSION:0.0
+    # Split Pane 0 vertically to get Pane 2 (bottom-left)
+    tmux split-window -v -t $SESSION:0.0
+    # Split Pane 1 vertically to get Pane 3 (bottom-right)
+    tmux split-window -v -t $SESSION:0.1
+    
+    # Layout should now be:
+    # 0 | 1
+    # --+--
+    # 2 | 3
+    tmux select-layout -t $SESSION:0 tiled
+
     # Pane 0: RTABMAP
     tmux select-pane -t $SESSION:0.0
     tmux select-pane -T "RTAB-Map"
+    tmux respawn-pane -k -t $SESSION:0.0 "bash"
     tmux send-keys -t $SESSION:0.0 "$CMD_1" C-m
 
-    # Split for Pane 1: TF (Horizontal split)
-    tmux split-window -h -t $SESSION:0.0
+    # Pane 1: TF
     tmux select-pane -t $SESSION:0.1
     tmux select-pane -T "TF_Static"
+    tmux respawn-pane -k -t $SESSION:0.1 "bash"
     tmux send-keys -t $SESSION:0.1 "$CMD_2" C-m
 
-    # Split for Pane 2: Nav2 (Vertical split of Pane 0)
-    tmux select-pane -t $SESSION:0.0
-    tmux split-window -v -t $SESSION:0.0
+    # Pane 2: Nav2
     tmux select-pane -t $SESSION:0.2
     tmux select-pane -T "Nav2"
+    tmux respawn-pane -k -t $SESSION:0.2 "bash"
     tmux send-keys -t $SESSION:0.2 "$CMD_3" C-m
 
-    # Split for Pane 3: Vel Clamp (Vertical split of Pane 1)
-    tmux select-pane -t $SESSION:0.1
-    tmux split-window -v -t $SESSION:0.1
+    # Pane 3: Vel Clamp
     tmux select-pane -t $SESSION:0.3
     tmux select-pane -T "VelClamp"
+    tmux respawn-pane -k -t $SESSION:0.3 "bash"
     tmux send-keys -t $SESSION:0.3 "$CMD_4" C-m
 
-    # Arrange tiles
-    tmux select-layout -t $SESSION:0 tiled
-    
     echo "✓ Session started with 4 remote panes."
-    
+
 else
-    echo "Session $SESSION already exists. attaching..."
+    echo "Session $SESSION already exists. Respawning panes..."
+    
+    # Ensure titles are on
+    tmux set -t $SESSION pane-border-status top
+    tmux set -t $SESSION pane-border-format "#{pane_index}: #{pane_title}"
+
+    # We assume the layout is roughly correct or we just target indices if they exist.
+    # To be safe using similar logic to start_drive, we could look up by title, but 
+    # since we are enforcing a structure, let's just use indices 0-3.
+    # If the user messed with the layout manually, this might be weird, but it's a "reset" script.
+
+    # Pane 0: RTABMAP
+    tmux select-pane -t $SESSION:0.0
+    tmux select-pane -T "RTAB-Map"
+    tmux respawn-pane -k -t $SESSION:0.0 "bash"
+    tmux send-keys -t $SESSION:0.0 "$CMD_1" C-m
+
+    # Pane 1: TF
+    tmux select-pane -t $SESSION:0.1
+    tmux select-pane -T "TF_Static"
+    tmux respawn-pane -k -t $SESSION:0.1 "bash"
+    tmux send-keys -t $SESSION:0.1 "$CMD_2" C-m
+
+    # Pane 2: Nav2
+    tmux select-pane -t $SESSION:0.2
+    tmux select-pane -T "Nav2"
+    tmux respawn-pane -k -t $SESSION:0.2 "bash"
+    tmux send-keys -t $SESSION:0.2 "$CMD_3" C-m
+
+    # Pane 3: Vel Clamp
+    tmux select-pane -t $SESSION:0.3
+    tmux select-pane -T "VelClamp"
+    tmux respawn-pane -k -t $SESSION:0.3 "bash"
+    tmux send-keys -t $SESSION:0.3 "$CMD_4" C-m
+    
+    echo "✓ Session refreshed."
 fi
 
 # Bring to foreground if running in a GUI terminal context
