@@ -111,3 +111,43 @@ stateSub.subscribe((msg) => {
         keyboardRadio.checked = true;
     }
 });
+
+// --- MISSION STATUS SUBSCRIBER ---
+const missionStatusSub = createTopic('/mission/status', 'std_msgs/String');
+missionStatusSub.subscribe((msg) => {
+    try {
+        const parts = msg.data.split('|');
+        const statusType = parts[0];
+        const queueIndex = parseInt(parts[1]);
+        
+        if (statusType === 'ARRIVED') {
+            const goalType = parts[2];
+            console.log(`Mission status: Arrived at ${goalType} (queue index: ${queueIndex})`);
+            
+            // Call the handler in main.js
+            if (window.onWaypointReached) {
+                window.onWaypointReached(queueIndex, goalType);
+            }
+        } else if (statusType === 'DROPOFF_COMPLETE') {
+            console.log(`Mission status: Dropoff complete (queue index: ${queueIndex})`);
+            // Dropoff countdown is handled in GUI, this is just confirmation
+        }
+    } catch (e) {
+        console.error('Error parsing mission status:', e);
+    }
+});
+
+// --- GPS SUBSCRIBER FOR MAP ---
+const gpsSub = createTopic('/mavros/global_position/global', 'sensor_msgs/NavSatFix');
+gpsSub.subscribe((msg) => {
+    // Update GPS display
+    const latEl = document.getElementById('recon-lat');
+    const lonEl = document.getElementById('recon-lon');
+    if (latEl) latEl.textContent = msg.latitude.toFixed(6);
+    if (lonEl) lonEl.textContent = msg.longitude.toFixed(6);
+    
+    // Update map marker if available
+    if (window.updateRoverMarker) {
+        window.updateRoverMarker(msg.latitude, msg.longitude);
+    }
+});

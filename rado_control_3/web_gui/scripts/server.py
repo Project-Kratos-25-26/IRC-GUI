@@ -232,6 +232,129 @@ def clear_mission_plan():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route("/api/mission_plan/update", methods=['POST'])
+def update_mission_plan():
+    """Update coordinates in mission_plan.txt."""
+    try:
+        data = request.json
+        obj_type = data.get('type', '').lower().strip()
+        color = data.get('color', '').lower().strip()
+        old_lat = float(data.get('old_lat'))
+        old_lon = float(data.get('old_lon'))
+        new_lat = float(data.get('new_lat'))
+        new_lon = float(data.get('new_lon'))
+        
+        lines = []
+        updated = False
+        
+        if os.path.exists(MISSION_PLAN_PATH):
+            with open(MISSION_PLAN_PATH, 'r') as f:
+                for line in f:
+                    line_stripped = line.strip()
+                    if not line_stripped:
+                        continue
+                    parts = line_stripped.split(',')
+                    if len(parts) >= 4:
+                        line_type = parts[0].lower().strip()
+                        line_color = parts[1].lower().strip()
+                        line_lat = float(parts[2])
+                        line_lon = float(parts[3])
+                        
+                        # Match by type, color, and approximate coordinates
+                        if (line_type == obj_type and line_color == color and 
+                            abs(line_lat - old_lat) < 0.000001 and 
+                            abs(line_lon - old_lon) < 0.000001):
+                            lines.append(f"{obj_type},{color},{new_lat},{new_lon}\n")
+                            updated = True
+                        else:
+                            lines.append(line_stripped + '\n')
+                    else:
+                        lines.append(line_stripped + '\n')
+        
+        with open(MISSION_PLAN_PATH, 'w') as f:
+            f.writelines(lines)
+        
+        return jsonify({'success': updated})
+    except Exception as e:
+        print(f"Error updating mission plan: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route("/api/mission_plan/delete", methods=['POST'])
+def delete_mission_entry():
+    """Delete a specific entry from mission_plan.txt."""
+    try:
+        data = request.json
+        obj_type = data.get('type', '').lower().strip()
+        color = data.get('color', '').lower().strip()
+        lat = float(data.get('lat'))
+        lon = float(data.get('lon'))
+        
+        lines = []
+        deleted = False
+        
+        if os.path.exists(MISSION_PLAN_PATH):
+            with open(MISSION_PLAN_PATH, 'r') as f:
+                for line in f:
+                    line_stripped = line.strip()
+                    if not line_stripped:
+                        continue
+                    parts = line_stripped.split(',')
+                    if len(parts) >= 4:
+                        line_type = parts[0].lower().strip()
+                        line_color = parts[1].lower().strip()
+                        line_lat = float(parts[2])
+                        line_lon = float(parts[3])
+                        
+                        # Skip the matching entry (delete it)
+                        if (line_type == obj_type and line_color == color and 
+                            abs(line_lat - lat) < 0.000001 and 
+                            abs(line_lon - lon) < 0.000001):
+                            deleted = True
+                            continue
+                        else:
+                            lines.append(line_stripped + '\n')
+                    else:
+                        lines.append(line_stripped + '\n')
+        
+        with open(MISSION_PLAN_PATH, 'w') as f:
+            f.writelines(lines)
+        
+        return jsonify({'success': deleted})
+    except Exception as e:
+        print(f"Error deleting mission entry: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route("/api/mission_plan/raw")
+def get_mission_plan_raw():
+    """Return raw mission plan as ordered list for queue display."""
+    result = []
+    try:
+        if os.path.exists(MISSION_PLAN_PATH):
+            with open(MISSION_PLAN_PATH, 'r') as f:
+                for idx, line in enumerate(f):
+                    line = line.strip()
+                    if not line:
+                        continue
+                    parts = line.split(',')
+                    if len(parts) >= 4:
+                        try:
+                            result.append({
+                                'index': idx,
+                                'type': parts[0].lower().strip(),
+                                'color': parts[1].lower().strip(),
+                                'lat': float(parts[2]),
+                                'lon': float(parts[3])
+                            })
+                        except (ValueError, IndexError):
+                            continue
+    except Exception as e:
+        print(f"Error reading mission plan: {e}")
+    
+    return jsonify(result)
+
+
 @app.route("/video_feed/<camera_name>")
 def video_feed(camera_name):
     """Serve MJPEG stream for a specific camera."""

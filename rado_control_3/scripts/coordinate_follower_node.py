@@ -40,11 +40,16 @@ class MissionManager(Node):
         self.mission_goals = []
         self.current_goal = None
         self.current_goal_index = -1
+        self.queue_index = -1  # For GUI queue tracking
         
         # Navigation State
         self.current_lat = 0.0
         self.current_lon = 0.0
         self.current_heading = 0.0
+        
+        # Dropoff action state
+        self.dropoff_start_time = 0.0
+        self.dropoff_duration = 10.0  # 10 second countdown
         
         # --- TUNING PARAMETERS ---
         self.cone_switch_distance = 0.5  # Meters - when to switch from Nav2 to cone following
@@ -65,6 +70,10 @@ class MissionManager(Node):
         # Publishers
         self.cone_trigger_pub = self.create_publisher(
             String, '/auto/cone_follow/trigger', 10
+        )
+        # Publisher to notify GUI of mission progress
+        self.mission_status_pub = self.create_publisher(
+            String, '/mission/status', 10
         )
 
         # Subscribers
@@ -160,9 +169,31 @@ class MissionManager(Node):
     def set_goal_callback(self, msg):
         """Handle goal selection from GUI"""
         try:
-            # Format: GOAL|type|color|lat|lon
             parts = msg.data.split('|')
-            if len(parts) >= 5 and parts[0] == 'GOAL':
+            
+            # New queue format: QUEUE|index|type|color|lat|lon
+            if len(parts) >= 6 and parts[0] == 'QUEUE':
+                self.queue_index = int(parts[1])
+                goal_type = parts[2].lower().strip()
+                color = parts[3].lower().strip()
+                lat = float(parts[4])
+                lon = float(parts[5])
+                
+                self.current_goal = {
+                    'type': goal_type,
+                    'color': color,
+                    'lat': lat,
+                    'lon': lon,
+                    'queue_index': self.queue_index
+                }
+                
+                self.get_logger().info(
+                    f"Queue Goal #{self.queue_index + 1} Set: {goal_type} {color} at ({lat:.6f}, {lon:.6f})"
+                )
+                self.internal_state = 'WAITING_FOR_PROCEED'
+            
+            # Legacy format: GOAL|type|color|lat|lon
+            elif len(parts) >= 5 and parts[0] == 'GOAL':
                 goal_type = parts[1].lower().strip()
                 color = parts[2].lower().strip()
                 lat = float(parts[3])
@@ -172,7 +203,8 @@ class MissionManager(Node):
                     'type': goal_type,
                     'color': color,
                     'lat': lat,
-                    'lon': lon
+                    'lon': lon,
+                    'queue_index': -1
                 }
                 
                 self.get_logger().info(
@@ -372,11 +404,28 @@ class MissionManager(Node):
             f"Arrived at {self.current_goal['type']} ({self.current_goal['color']})"
         )
         
+        queue_idx = self.current_goal.get('queue_index', -1)
+        
         if self.current_goal['type'] == 'pickup':
+            # Notify GUI that pickup waypoint is reached
+            status_msg = String()
+            status_msg.data = f"ARRIVED|{queue_idx}|pickup"
+            self.mission_status_pub.publish(status_msg)
+            
             self.internal_state = 'WAITING_FOR_PROCEED'
+            self.get_logger().info(f"Pickup complete at {self.current_goal['color']}")
+            
         elif self.current_goal['type'] == 'dropoff':
+            # Start dropoff action with countdown
             self.internal_state = 'DROPOFF_ACTION'
             self.dropoff_start_time = time.time()
+            
+            # Notify GUI that dropoff waypoint is reached (triggers countdown)
+            status_msg = String()
+            status_msg.data = f"ARRIVED|{queue_idx}|dropoff"
+            self.mission_status_pub.publish(status_msg)
+            
+            self.get_logger().info(f"Starting dropoff action - opening cache box: {int(self.dropoff_duration)} seconds")
 
     def get_distance_bearing(self, lat1, lon1, lat2, lon2):
         """Calculate distance and bearing between two GPS coordinates"""
@@ -404,10 +453,27 @@ class MissionManager(Node):
     def control_loop(self):
         """Main control loop"""
         if self.internal_state == 'DROPOFF_ACTION':
-            # Wait for dropoff action to complete (e.g., 5 seconds)
-            if time.time() - self.dropoff_start_time > 5.0:
-                self.get_logger().info('Dropoff complete. Proceeding to next goal.')
-                self.select_next_goal()
+            elapsed = time.time() - self.dropoff_start_time
+            remaining = int(self.dropoff_duration - elapsed)
+            
+            if remaining > 0:
+                # Log countdown
+                self.get_logger().info(
+                    f"Opening cache box: {remaining} seconds remaining",
+                    throttle_duration_sec=1
+                )
+            else:
+                # Dropoff action complete
+                self.get_logger().info('Dropoff action complete. Cache box closed.')
+                
+                # Notify GUI that dropoff is complete
+                queue_idx = self.current_goal.get('queue_index', -1)
+                status_msg = String()
+                status_msg.data = f"DROPOFF_COMPLETE|{queue_idx}"
+                self.mission_status_pub.publish(status_msg)
+                
+                self.internal_state = 'WAITING_FOR_PROCEED'
+                self.get_logger().info('Ready for next waypoint.')
 
 
 def main(args=None):

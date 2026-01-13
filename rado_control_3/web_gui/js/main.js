@@ -146,6 +146,11 @@ function sendLog() {
 // --- MISSION PLAN MANAGEMENT ---
 let missionPlanData = {};
 let selectedGoal = null;
+let missionQueue = [];
+let currentMissionIndex = -1;
+let missionActive = false;
+let dropoffCountdown = null;
+let editingCoord = null;
 
 function refreshMissionPlan() {
     fetch('/api/mission_plan?t=' + Date.now())
@@ -181,12 +186,16 @@ function renderMissionPlanGrid(data) {
         } else {
             pickups.forEach((coord, idx) => {
                 const goalId = `pickup_${color}_${idx}`;
-                const isSelected = selectedGoal && selectedGoal.id === goalId;
+                const isInQueue = missionQueue.some(q => q.id === goalId);
                 html += `
-                    <div class="mission-coord-item ${isSelected ? 'selected' : ''}" 
-                         onclick="selectGoal('${goalId}', 'pickup', '${color}', ${coord.lat}, ${coord.lon})">
-                        <input type="radio" name="mission-goal" ${isSelected ? 'checked' : ''}>
+                    <div class="mission-coord-item ${isInQueue ? 'selected' : ''}" 
+                         onclick="addToQueue('${goalId}', 'pickup', '${color}', ${coord.lat}, ${coord.lon})">
                         <span class="mission-coord-text">${coord.lat.toFixed(6)}, ${coord.lon.toFixed(6)}</span>
+                        <div class="mission-coord-actions">
+                            <button class="coord-action-btn btn-blue" onclick="event.stopPropagation(); openEditModal('pickup', '${color}', ${coord.lat}, ${coord.lon})" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </div>
                     </div>`;
             });
         }
@@ -199,12 +208,16 @@ function renderMissionPlanGrid(data) {
         } else {
             dropoffs.forEach((coord, idx) => {
                 const goalId = `dropoff_${color}_${idx}`;
-                const isSelected = selectedGoal && selectedGoal.id === goalId;
+                const isInQueue = missionQueue.some(q => q.id === goalId);
                 html += `
-                    <div class="mission-coord-item ${isSelected ? 'selected' : ''}" 
-                         onclick="selectGoal('${goalId}', 'dropoff', '${color}', ${coord.lat}, ${coord.lon})">
-                        <input type="radio" name="mission-goal" ${isSelected ? 'checked' : ''}>
+                    <div class="mission-coord-item ${isInQueue ? 'selected' : ''}" 
+                         onclick="addToQueue('${goalId}', 'dropoff', '${color}', ${coord.lat}, ${coord.lon})">
                         <span class="mission-coord-text">${coord.lat.toFixed(6)}, ${coord.lon.toFixed(6)}</span>
+                        <div class="mission-coord-actions">
+                            <button class="coord-action-btn btn-blue" onclick="event.stopPropagation(); openEditModal('dropoff', '${color}', ${coord.lat}, ${coord.lon})" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </div>
                     </div>`;
             });
         }
@@ -216,28 +229,184 @@ function renderMissionPlanGrid(data) {
     document.getElementById('mission-plan-grid').innerHTML = html;
 }
 
-function selectGoal(id, type, color, lat, lon) {
-    selectedGoal = { id, type, color, lat, lon };
-    
-    // Update display
-    const display = document.getElementById('selected-goal-display');
-    if (display) {
-        display.innerHTML = `
-            <strong>${type.toUpperCase()}</strong> - 
-            <span style="color: ${color === 'yellow' ? '#f1c40f' : color};">${color.toUpperCase()}</span><br>
-            <span style="font-size:12px; color:#aaa;">Lat: ${lat.toFixed(6)}, Lon: ${lon.toFixed(6)}</span>
-        `;
+// --- MISSION QUEUE MANAGEMENT ---
+function addToQueue(id, type, color, lat, lon) {
+    // Check if already in queue
+    const existingIndex = missionQueue.findIndex(q => q.id === id);
+    if (existingIndex !== -1) {
+        // Remove from queue if already present
+        missionQueue.splice(existingIndex, 1);
+        addMissionLog(`Removed from queue: ${type} ${color}`);
+    } else {
+        // Add to queue
+        missionQueue.push({ id, type, color, lat, lon, status: 'pending' });
+        addMissionLog(`Added to queue: ${type} ${color} (#${missionQueue.length})`);
     }
     
-    // Re-render grid to show selection
+    renderMissionQueue();
     renderMissionPlanGrid(missionPlanData);
-    
-    addMissionLog(`Selected: ${type} ${color} (${lat.toFixed(4)}, ${lon.toFixed(4)})`);
 }
 
-function proceedWithGoal() {
-    if (!selectedGoal) {
-        alert("Please select a goal from the mission plan first!");
+function renderMissionQueue() {
+    const container = document.getElementById('mission-queue');
+    
+    if (missionQueue.length === 0) {
+        container.innerHTML = '<div class="queue-empty">No waypoints in queue. Click coordinates above to add.</div>';
+        return;
+    }
+    
+    let html = '';
+    missionQueue.forEach((item, idx) => {
+        const isActive = idx === currentMissionIndex && missionActive;
+        const isCompleted = item.status === 'completed';
+        const colorStyle = item.color === 'yellow' ? '#f1c40f' : item.color;
+        
+        html += `
+            <div class="queue-item ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}">
+                <div class="queue-item-order">${idx + 1}</div>
+                <div class="queue-item-info">
+                    <div class="queue-item-type" style="color:${colorStyle}">
+                        ${item.type.toUpperCase()} - ${item.color.toUpperCase()}
+                    </div>
+                    <div class="queue-item-coords">${item.lat.toFixed(6)}, ${item.lon.toFixed(6)}</div>
+                </div>
+                <div class="queue-item-actions">
+                    ${idx > 0 ? `<button class="queue-btn" onclick="moveQueueItem(${idx}, -1)" title="Move Up"><i class="fas fa-arrow-up"></i></button>` : ''}
+                    ${idx < missionQueue.length - 1 ? `<button class="queue-btn" onclick="moveQueueItem(${idx}, 1)" title="Move Down"><i class="fas fa-arrow-down"></i></button>` : ''}
+                    <button class="queue-btn btn-red" onclick="removeFromQueue(${idx})" title="Remove"><i class="fas fa-times"></i></button>
+                </div>
+            </div>`;
+    });
+    
+    container.innerHTML = html;
+}
+
+function moveQueueItem(index, direction) {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= missionQueue.length) return;
+    
+    const item = missionQueue.splice(index, 1)[0];
+    missionQueue.splice(newIndex, 0, item);
+    
+    renderMissionQueue();
+    addMissionLog(`Reordered queue: ${item.type} ${item.color} now #${newIndex + 1}`);
+}
+
+function removeFromQueue(index) {
+    const item = missionQueue.splice(index, 1)[0];
+    renderMissionQueue();
+    renderMissionPlanGrid(missionPlanData);
+    addMissionLog(`Removed from queue: ${item.type} ${item.color}`);
+}
+
+function clearMissionQueue() {
+    missionQueue = [];
+    currentMissionIndex = -1;
+    missionActive = false;
+    renderMissionQueue();
+    renderMissionPlanGrid(missionPlanData);
+    addMissionLog('Mission queue cleared');
+}
+
+// --- COORDINATE EDITING ---
+function openEditModal(type, color, lat, lon) {
+    editingCoord = { type, color, lat, lon };
+    
+    document.getElementById('edit-type').value = type.toUpperCase();
+    document.getElementById('edit-color').value = color.toUpperCase();
+    document.getElementById('edit-lat').value = lat;
+    document.getElementById('edit-lon').value = lon;
+    
+    document.getElementById('edit-coord-modal').style.display = 'flex';
+}
+
+function closeEditModal() {
+    document.getElementById('edit-coord-modal').style.display = 'none';
+    editingCoord = null;
+}
+
+function saveCoordEdit() {
+    if (!editingCoord) return;
+    
+    const newLat = parseFloat(document.getElementById('edit-lat').value);
+    const newLon = parseFloat(document.getElementById('edit-lon').value);
+    
+    if (isNaN(newLat) || isNaN(newLon)) {
+        alert('Invalid coordinates');
+        return;
+    }
+    
+    fetch('/api/mission_plan/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            type: editingCoord.type,
+            color: editingCoord.color,
+            old_lat: editingCoord.lat,
+            old_lon: editingCoord.lon,
+            new_lat: newLat,
+            new_lon: newLon
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            addMissionLog(`Updated ${editingCoord.type} ${editingCoord.color} coordinates`);
+            closeEditModal();
+            refreshMissionPlan();
+        } else {
+            alert('Failed to update coordinates');
+        }
+    })
+    .catch(e => {
+        console.error('Error updating coordinates:', e);
+        alert('Failed to update coordinates');
+    });
+}
+
+function deleteCoord() {
+    if (!editingCoord) return;
+    
+    if (!confirm(`Delete ${editingCoord.type} ${editingCoord.color} at (${editingCoord.lat.toFixed(6)}, ${editingCoord.lon.toFixed(6)})?`)) {
+        return;
+    }
+    
+    fetch('/api/mission_plan/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            type: editingCoord.type,
+            color: editingCoord.color,
+            lat: editingCoord.lat,
+            lon: editingCoord.lon
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            addMissionLog(`Deleted ${editingCoord.type} ${editingCoord.color}`);
+            closeEditModal();
+            refreshMissionPlan();
+            // Also remove from queue if present
+            missionQueue = missionQueue.filter(q => 
+                !(q.type === editingCoord.type && q.color === editingCoord.color && 
+                  Math.abs(q.lat - editingCoord.lat) < 0.000001 && Math.abs(q.lon - editingCoord.lon) < 0.000001)
+            );
+            renderMissionQueue();
+        } else {
+            alert('Failed to delete coordinate');
+        }
+    })
+    .catch(e => {
+        console.error('Error deleting coordinate:', e);
+        alert('Failed to delete coordinate');
+    });
+}
+
+// --- MULTI-WAYPOINT MISSION EXECUTION ---
+function proceedWithQueue() {
+    if (missionQueue.length === 0) {
+        alert("Please add waypoints to the queue first!");
         return;
     }
     
@@ -246,17 +415,35 @@ function proceedWithGoal() {
         return;
     }
     
-    // Send the goal to the coordinate follower via ROS topic
-    const goalData = `GOAL|${selectedGoal.type}|${selectedGoal.color}|${selectedGoal.lat}|${selectedGoal.lon}`;
+    // Start mission from beginning if not active
+    if (!missionActive) {
+        currentMissionIndex = 0;
+        missionActive = true;
+        missionQueue.forEach(q => q.status = 'pending');
+    }
     
-    // Publish to /gcs/command for mission manager
-    const gcsPub = new ROSLIB.Topic({
-        ros: ros,
-        name: '/gcs/command',
-        messageType: 'std_msgs/String'
-    });
+    // Send current goal to mission manager
+    sendCurrentGoal();
+}
+
+function sendCurrentGoal() {
+    if (currentMissionIndex < 0 || currentMissionIndex >= missionQueue.length) {
+        // Mission complete
+        missionActive = false;
+        document.getElementById('mission-status-panel').style.display = 'none';
+        addMissionLog('Mission queue complete!');
+        return;
+    }
     
-    // First send the goal setup
+    const goal = missionQueue[currentMissionIndex];
+    goal.status = 'active';
+    
+    // Show mission status
+    showMissionStatus(`Navigating to #${currentMissionIndex + 1}: ${goal.type} ${goal.color}`);
+    
+    // Publish goal to ROS
+    const goalData = `QUEUE|${currentMissionIndex}|${goal.type}|${goal.color}|${goal.lat}|${goal.lon}`;
+    
     const goalPub = new ROSLIB.Topic({
         ros: ros,
         name: '/mission/set_goal',
@@ -264,14 +451,128 @@ function proceedWithGoal() {
     });
     goalPub.publish(new ROSLIB.Message({ data: goalData }));
     
-    // Then send PROCEED command
+    // Send PROCEED command
     setTimeout(() => {
-        gcsPub.publish(new ROSLIB.Message({ data: 'PROCEED' }));
         sysPub.publish(new ROSLIB.Message({ data: 'PROCEED' }));
     }, 100);
     
-    addMissionLog(`Proceeding to: ${selectedGoal.type} ${selectedGoal.color}`);
+    addMissionLog(`Proceeding to #${currentMissionIndex + 1}: ${goal.type} ${goal.color}`);
     updateMode('AUTO');
+    renderMissionQueue();
+}
+
+function showMissionStatus(text) {
+    const panel = document.getElementById('mission-status-panel');
+    const display = document.getElementById('mission-progress-display');
+    panel.style.display = 'block';
+    display.innerHTML = `<div class="mission-action-text">${text}</div>`;
+}
+
+function showDropoffCountdown(seconds) {
+    const panel = document.getElementById('mission-status-panel');
+    const display = document.getElementById('mission-progress-display');
+    panel.style.display = 'block';
+    
+    let remaining = seconds;
+    display.innerHTML = `
+        <div class="mission-action-text">Opening cache box</div>
+        <div class="mission-countdown">${remaining}</div>
+    `;
+    
+    if (dropoffCountdown) clearInterval(dropoffCountdown);
+    
+    dropoffCountdown = setInterval(() => {
+        remaining--;
+        const countdownEl = display.querySelector('.mission-countdown');
+        if (countdownEl) countdownEl.textContent = remaining;
+        
+        if (remaining <= 0) {
+            clearInterval(dropoffCountdown);
+            dropoffCountdown = null;
+            onDropoffComplete();
+        }
+    }, 1000);
+}
+
+function onDropoffComplete() {
+    const goal = missionQueue[currentMissionIndex];
+    if (goal) {
+        goal.status = 'completed';
+        addMissionLog(`Completed dropoff at ${goal.color}`);
+    }
+    
+    // Move to next waypoint
+    currentMissionIndex++;
+    renderMissionQueue();
+    
+    if (currentMissionIndex < missionQueue.length) {
+        // Proceed to next goal automatically
+        setTimeout(() => {
+            sendCurrentGoal();
+        }, 1000);
+    } else {
+        // Mission complete
+        missionActive = false;
+        document.getElementById('mission-status-panel').style.display = 'none';
+        addMissionLog('All waypoints completed!');
+    }
+}
+
+function onWaypointReached(goalIndex, goalType) {
+    if (goalIndex !== currentMissionIndex) return;
+    
+    const goal = missionQueue[currentMissionIndex];
+    
+    if (goalType === 'dropoff') {
+        // Show countdown for dropoff
+        showDropoffCountdown(10);
+    } else {
+        // Pickup complete, move to next
+        if (goal) {
+            goal.status = 'completed';
+            addMissionLog(`Completed pickup at ${goal.color}`);
+        }
+        
+        currentMissionIndex++;
+        renderMissionQueue();
+        
+        if (currentMissionIndex < missionQueue.length) {
+            setTimeout(() => {
+                sendCurrentGoal();
+            }, 1000);
+        } else {
+            missionActive = false;
+            document.getElementById('mission-status-panel').style.display = 'none';
+            addMissionLog('All waypoints completed!');
+        }
+    }
+}
+
+function stopMission() {
+    missionActive = false;
+    if (dropoffCountdown) {
+        clearInterval(dropoffCountdown);
+        dropoffCountdown = null;
+    }
+    
+    // Send stop command
+    sysPub.publish(new ROSLIB.Message({ data: 'MANUAL' }));
+    
+    document.getElementById('mission-status-panel').style.display = 'none';
+    addMissionLog('Mission stopped');
+    updateMode('MANUAL');
+}
+
+// Expose onWaypointReached globally for ros_module.js to call
+window.onWaypointReached = onWaypointReached;
+
+// Legacy function for backwards compatibility
+function selectGoal(id, type, color, lat, lon) {
+    addToQueue(id, type, color, lat, lon);
+}
+
+function proceedWithGoal() {
+    proceedWithQueue();
 }
 
 function clearMissionPlan() {
@@ -281,8 +582,11 @@ function clearMissionPlan() {
         .then(r => r.json())
         .then(data => {
             if (data.success) {
-                selectedGoal = null;
-                document.getElementById('selected-goal-display').textContent = 'No goal selected';
+                // Also clear the mission queue
+                missionQueue = [];
+                currentMissionIndex = -1;
+                missionActive = false;
+                renderMissionQueue();
                 refreshMissionPlan();
                 addMissionLog("Mission plan cleared");
             } else {
