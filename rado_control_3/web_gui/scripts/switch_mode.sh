@@ -8,9 +8,9 @@ SESSION="rover_ui"
 
 echo "Switching to mode: $MODE"
 
-CMD_MANUAL="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && export PYTHONUNBUFFERED=1 && ros2 run drive_controls drive.py; exec bash'"
-CMD_AUTO="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && export PYTHONUNBUFFERED=1 && ros2 run drive_controls drive_auto.py; exec bash'"
-CMD_TELEOP="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && ros2 run teleop_twist_keyboard teleop_twist_keyboard; exec bash'"
+CMD_MANUAL="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && export PYTHONUNBUFFERED=1 && ros2 run drive_controls drive.py'"
+CMD_AUTO="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && export PYTHONUNBUFFERED=1 && ros2 run drive_controls drive_auto.py'"
+CMD_TELEOP="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && ros2 run teleop_twist_keyboard teleop_twist_keyboard'"
 CMD_KILL="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'pkill -f drive.py; pkill -f drive_auto.py; pkill -f teleop_twist_keyboard' || true"
 
 if ! tmux has-session -t $SESSION 2>/dev/null; then
@@ -55,24 +55,24 @@ elif [ "$MODE" == "keyboard" ]; then
     sleep 0.5
     tmux send-keys -t $DRIVE_PANE_ID "$CMD_AUTO" C-m
     
-    # 2. Check/Create Teleop Split
-    TELEOP_PANE_ID=$(tmux list-panes -t $SESSION:0 -F "#{pane_id} #{pane_title}" | grep "Teleop_Input" | awk '{print $1}')
+    # # 2. Check/Create Teleop Split
+    # TELEOP_PANE_ID=$(tmux list-panes -t $SESSION:0 -F "#{pane_id} #{pane_title}" | grep "Teleop_Input" | awk '{print $1}')
     
-    if [ -z "$TELEOP_PANE_ID" ]; then
-        # Create split from Drive Pane
-        tmux split-window -h -t $DRIVE_PANE_ID
-        # New split is active
-        tmux select-pane -T "Teleop_Input"
-        TELEOP_PANE_ID=$(tmux display-message -p "#{pane_id}")
-    else
-        # Just select it
-        tmux select-pane -t $TELEOP_PANE_ID
-    fi
+    # if [ -z "$TELEOP_PANE_ID" ]; then
+    #     # Create split from Drive Pane
+    #     tmux split-window -h -t $DRIVE_PANE_ID
+    #     # New split is active
+    #     tmux select-pane -T "Teleop_Input"
+    #     TELEOP_PANE_ID=$(tmux display-message -p "#{pane_id}")
+    # else
+    #     # Just select it
+    #     tmux select-pane -t $TELEOP_PANE_ID
+    # fi
     
-    # 3. Run Teleop
-    tmux respawn-pane -k -t $TELEOP_PANE_ID "bash"
-    sleep 0.5
-    tmux send-keys -t $TELEOP_PANE_ID "$CMD_TELEOP" C-m
+    # # 3. Run Teleop
+    # tmux respawn-pane -k -t $TELEOP_PANE_ID "bash"
+    # sleep 0.5
+    # tmux send-keys -t $TELEOP_PANE_ID "$CMD_TELEOP" C-m
     
 else
     echo "Unknown mode: $MODE"

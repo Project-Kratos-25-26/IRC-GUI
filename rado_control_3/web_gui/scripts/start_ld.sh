@@ -6,8 +6,8 @@ RASPI_IP="192.168.1.16"
 PASS="kratos123"
 SESSION="rover_ui"
 
-CMD_MICROROS="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyUSB1'"
-CMD_LD="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && export PYTHONUNBUFFERED=1 && ros2 run ld_controls ld_mapping'"
+CMD_MICROROS="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyUSB1 ; exec bash'"
+CMD_LD="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && export PYTHONUNBUFFERED=1 && ros2 run ld_controls ld_mapping '"
 
 if ! tmux has-session -t $SESSION 2>/dev/null; then
     /usr/bin/env bash $(dirname "$0")/start_drive.sh

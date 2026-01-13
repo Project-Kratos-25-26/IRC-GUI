@@ -11,7 +11,7 @@ echo "[*] Updating package lists..."
 sudo apt-get update
 
 echo "[*] Installing system dependencies (sshpass, tmux)..."
-sudo apt-get install -y sshpass tmux gstreamer1.0-plugins-* gstreamer1.0-tools 
+sudo apt-get install -y sshpass tmux gstreamer1.0-plugins-* gstreamer1.0-tools gstreamer1.0-libav ros-humble-joy ros-humble-rosbridge-server 
  
 
 echo "[*] Checking for Python requirements..."
