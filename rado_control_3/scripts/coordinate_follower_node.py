@@ -27,13 +27,29 @@ class MissionManager(Node):
         # Parameters
         self.declare_parameter('map_frame', 'map')
         self.declare_parameter('base_frame', 'base_link')
-        self.declare_parameter('gps_origin_lat', 0.0)  # Set your map origin
-        self.declare_parameter('gps_origin_lon', 0.0)  # Set your map origin
+        self.declare_parameter('gps_origin_lat', 0.0)  # Set your map origin (0.0 = auto-detect)
+        self.declare_parameter('gps_origin_lon', 0.0)  # Set your map origin (0.0 = auto-detect)
+        self.declare_parameter('gps_stabilization_samples', 10)  # Number of GPS samples for stabilization
+        self.declare_parameter('gps_stabilization_threshold', 0.00001)  # Max std dev for stabilization (degrees)
         
         self.map_frame = self.get_parameter('map_frame').value
         self.base_frame = self.get_parameter('base_frame').value
         self.gps_origin_lat = self.get_parameter('gps_origin_lat').value
         self.gps_origin_lon = self.get_parameter('gps_origin_lon').value
+        self.gps_stabilization_samples = self.get_parameter('gps_stabilization_samples').value
+        self.gps_stabilization_threshold = self.get_parameter('gps_stabilization_threshold').value
+        
+        # GPS origin initialization state
+        self.gps_origin_initialized = False
+        self.gps_init_samples_lat = []
+        self.gps_init_samples_lon = []
+        
+        # Check if origin was provided via parameters
+        if self.gps_origin_lat != 0.0 or self.gps_origin_lon != 0.0:
+            self.gps_origin_initialized = True
+            self.get_logger().info(
+                f'GPS origin set from parameters: ({self.gps_origin_lat:.6f}, {self.gps_origin_lon:.6f})'
+            )
 
         # State machine
         self.internal_state = 'IDLE'
@@ -42,14 +58,14 @@ class MissionManager(Node):
         self.current_goal_index = -1
         self.queue_index = -1  # For GUI queue tracking
         
+        # Mission queue from GUI (stores all waypoints for this PROCEED press)
+        self.mission_queue = []  # List of goals to process
+        self.mission_queue_index = 0  # Current position in queue
+        
         # Navigation State
         self.current_lat = 0.0
         self.current_lon = 0.0
         self.current_heading = 0.0
-        
-        # Dropoff action state
-        self.dropoff_start_time = 0.0
-        self.dropoff_duration = 10.0  # 10 second countdown
         
         # --- TUNING PARAMETERS ---
         self.cone_switch_distance = 0.5  # Meters - when to switch from Nav2 to cone following
@@ -148,47 +164,75 @@ class MissionManager(Node):
         
         if command == 'PROCEED':
             if self.internal_state == 'WAITING_FOR_PROCEED':
-                # If we have a manually selected goal, use that
-                if self.current_goal:
+                # Start processing the mission queue from the beginning
+                self.mission_queue_index = 0
+                
+                # Clean up the queue (remove None entries)
+                self.mission_queue = [g for g in self.mission_queue if g is not None]
+                
+                if len(self.mission_queue) > 0:
+                    self.current_goal = self.mission_queue[0]
                     self.internal_state = 'WAITING_FOR_AUTONOMOUS'
                     self.get_logger().info(
-                        f"Proceeding to manually selected goal: {self.current_goal['type']} "
+                        f"Starting mission queue ({len(self.mission_queue)} waypoints). "
+                        f"First: {self.current_goal['type']} {self.current_goal['color']} "
+                        f"at ({self.current_goal['lat']:.6f}, {self.current_goal['lon']:.6f})"
+                    )
+                elif self.current_goal:
+                    # Fallback to single goal mode
+                    self.mission_queue = [self.current_goal]
+                    self.mission_queue_index = 0
+                    self.internal_state = 'WAITING_FOR_AUTONOMOUS'
+                    self.get_logger().info(
+                        f"Proceeding to goal: {self.current_goal['type']} "
                         f"{self.current_goal['color']} at ({self.current_goal['lat']:.6f}, "
                         f"{self.current_goal['lon']:.6f})"
                     )
                 else:
-                    self.select_next_goal()
+                    self.get_logger().warn("No waypoints in queue. Add waypoints first.")
         elif command == 'MANUAL':
             self.internal_state = 'WAITING_FOR_PROCEED'
             self.cancel_nav2_goal()
             self.cone_trigger_pub.publish(String(data="STOP"))
+            # Clear the queue on manual stop
+            self.mission_queue = []
+            self.mission_queue_index = 0
+            self.get_logger().info("Mission stopped. Queue cleared.")
         elif command == 'CANCEL':
             self.cancel_nav2_goal()
             self.internal_state = 'WAITING_FOR_PROCEED'
 
     def set_goal_callback(self, msg):
-        """Handle goal selection from GUI"""
+        """Handle goal selection from GUI - adds to mission queue"""
         try:
             parts = msg.data.split('|')
             
             # New queue format: QUEUE|index|type|color|lat|lon
             if len(parts) >= 6 and parts[0] == 'QUEUE':
-                self.queue_index = int(parts[1])
+                queue_idx = int(parts[1])
                 goal_type = parts[2].lower().strip()
                 color = parts[3].lower().strip()
                 lat = float(parts[4])
                 lon = float(parts[5])
                 
-                self.current_goal = {
+                goal = {
                     'type': goal_type,
                     'color': color,
                     'lat': lat,
                     'lon': lon,
-                    'queue_index': self.queue_index
+                    'queue_index': queue_idx
                 }
                 
+                # Add to mission queue (replace if same index exists, or append)
+                while len(self.mission_queue) <= queue_idx:
+                    self.mission_queue.append(None)
+                self.mission_queue[queue_idx] = goal
+                
+                # Set as current goal for immediate reference
+                self.current_goal = goal
+                
                 self.get_logger().info(
-                    f"Queue Goal #{self.queue_index + 1} Set: {goal_type} {color} at ({lat:.6f}, {lon:.6f})"
+                    f"Queue Goal #{queue_idx + 1} Added: {goal_type} {color} at ({lat:.6f}, {lon:.6f}). Queue size: {len([g for g in self.mission_queue if g])}"
                 )
                 self.internal_state = 'WAITING_FOR_PROCEED'
             
@@ -206,6 +250,10 @@ class MissionManager(Node):
                     'lon': lon,
                     'queue_index': -1
                 }
+                
+                # For legacy, just set as single goal
+                self.mission_queue = [self.current_goal]
+                self.mission_queue_index = 0
                 
                 self.get_logger().info(
                     f"GUI Goal Set: {goal_type} {color} at ({lat:.6f}, {lon:.6f})"
@@ -261,9 +309,70 @@ class MissionManager(Node):
                 self.cone_trigger_pub.publish(String(data="STOP"))
 
     def gps_callback(self, msg):
-        """Update current GPS position"""
+        """Update current GPS position and initialize origin if needed"""
         self.current_lat = msg.latitude
         self.current_lon = msg.longitude
+        
+        # Auto-initialize GPS origin if not set
+        if not self.gps_origin_initialized:
+            self._collect_gps_for_origin(msg.latitude, msg.longitude)
+    
+    def _collect_gps_for_origin(self, lat, lon):
+        """Collect GPS samples and set origin when stabilized"""
+        # Skip invalid readings
+        if lat == 0.0 and lon == 0.0:
+            return
+        
+        # Collect samples
+        self.gps_init_samples_lat.append(lat)
+        self.gps_init_samples_lon.append(lon)
+        
+        num_samples = len(self.gps_init_samples_lat)
+        
+        # Wait for enough samples
+        if num_samples < self.gps_stabilization_samples:
+            self.get_logger().info(
+                f'Collecting GPS for origin: {num_samples}/{self.gps_stabilization_samples} samples',
+                throttle_duration_sec=2
+            )
+            return
+        
+        # Keep only recent samples
+        if num_samples > self.gps_stabilization_samples:
+            self.gps_init_samples_lat = self.gps_init_samples_lat[-self.gps_stabilization_samples:]
+            self.gps_init_samples_lon = self.gps_init_samples_lon[-self.gps_stabilization_samples:]
+        
+        # Calculate standard deviation to check stability
+        lat_mean = sum(self.gps_init_samples_lat) / len(self.gps_init_samples_lat)
+        lon_mean = sum(self.gps_init_samples_lon) / len(self.gps_init_samples_lon)
+        
+        lat_variance = sum((x - lat_mean) ** 2 for x in self.gps_init_samples_lat) / len(self.gps_init_samples_lat)
+        lon_variance = sum((x - lon_mean) ** 2 for x in self.gps_init_samples_lon) / len(self.gps_init_samples_lon)
+        
+        lat_std = math.sqrt(lat_variance)
+        lon_std = math.sqrt(lon_variance)
+        
+        # Check if GPS is stable enough
+        if lat_std <= self.gps_stabilization_threshold and lon_std <= self.gps_stabilization_threshold:
+            self.gps_origin_lat = lat_mean
+            self.gps_origin_lon = lon_mean
+            self.gps_origin_initialized = True
+            
+            self.get_logger().info(
+                f'GPS origin auto-set from stabilized readings: '
+                f'({self.gps_origin_lat:.6f}, {self.gps_origin_lon:.6f}) '
+                f'[std: lat={lat_std:.8f}, lon={lon_std:.8f}]'
+            )
+            
+            # Clear samples to free memory
+            self.gps_init_samples_lat = []
+            self.gps_init_samples_lon = []
+        else:
+            self.get_logger().info(
+                f'GPS not yet stable. std: lat={lat_std:.8f}, lon={lon_std:.8f} '
+                f'(threshold: {self.gps_stabilization_threshold})',
+                throttle_duration_sec=2
+            )
 
     def cone_status_callback(self, msg):
         """Handle cone following status updates"""
@@ -277,11 +386,12 @@ class MissionManager(Node):
         For better accuracy, consider using robot_localization or a proper UTM converter
         """
         # If no origin set, log warning
-        if self.gps_origin_lat == 0.0 and self.gps_origin_lon == 0.0:
+        if not self.gps_origin_initialized:
             self.get_logger().warn(
-                'GPS origin not set! Using (0,0). Set gps_origin_lat and gps_origin_lon parameters.',
+                'GPS origin not yet initialized! Waiting for GPS to stabilize...',
                 throttle_duration_sec=5
             )
+            return 0.0, 0.0
         
         # Earth radius in meters
         R = 6371000.0
@@ -305,6 +415,12 @@ class MissionManager(Node):
         if not self.nav2_client.server_is_ready():
             self.get_logger().error('Nav2 action server not available!')
             self.internal_state = 'WAITING_FOR_PROCEED'
+            return
+        
+        # Check if GPS origin is initialized
+        if not self.gps_origin_initialized:
+            self.get_logger().warn('Cannot navigate: GPS origin not yet initialized. Waiting for GPS to stabilize...')
+            self.internal_state = 'WAITING_FOR_AUTONOMOUS'
             return
 
         # Convert GPS to map coordinates
@@ -373,7 +489,9 @@ class MissionManager(Node):
                 )
                 self.cancel_nav2_goal()
                 self.internal_state = 'CONE_NAVIGATING'
-                self.cone_trigger_pub.publish(String(data=self.current_goal['color']))
+                # Send color|type so cone follower knows if this is pickup or dropoff
+                trigger_msg = f"{self.current_goal['color']}|{self.current_goal['type']}"
+                self.cone_trigger_pub.publish(String(data=trigger_msg))
 
     def nav2_result_callback(self, future):
         """Handle Nav2 navigation result"""
@@ -384,7 +502,9 @@ class MissionManager(Node):
             self.get_logger().info('Nav2 navigation succeeded!')
             # Switch to cone following for final approach
             self.internal_state = 'CONE_NAVIGATING'
-            self.cone_trigger_pub.publish(String(data=self.current_goal['color']))
+            # Send color|type so cone follower knows if this is pickup or dropoff
+            trigger_msg = f"{self.current_goal['color']}|{self.current_goal['type']}"
+            self.cone_trigger_pub.publish(String(data=trigger_msg))
         elif status == 5:  # CANCELED
             self.get_logger().info('Nav2 navigation was canceled')
         else:
@@ -399,33 +519,61 @@ class MissionManager(Node):
             self.nav2_goal_handle = None
 
     def handle_arrival(self):
-        """Handle arrival at goal location"""
+        """Handle arrival at goal location - auto-proceed to next waypoint"""
         self.get_logger().info(
             f"Arrived at {self.current_goal['type']} ({self.current_goal['color']})"
         )
         
         queue_idx = self.current_goal.get('queue_index', -1)
         
-        if self.current_goal['type'] == 'pickup':
-            # Notify GUI that pickup waypoint is reached
+        # Notify GUI of completion
+        status_msg = String()
+        status_msg.data = f"COMPLETE|{queue_idx}|{self.current_goal['type']}"
+        self.mission_status_pub.publish(status_msg)
+        
+        self.get_logger().info(f"{self.current_goal['type'].capitalize()} complete at {self.current_goal['color']}")
+        
+        # Auto-proceed to next waypoint in queue
+        self.proceed_to_next_waypoint()
+
+    def proceed_to_next_waypoint(self):
+        """Move to the next waypoint in the mission queue, or finish if done"""
+        self.mission_queue_index += 1
+        
+        if self.mission_queue_index < len(self.mission_queue):
+            # More waypoints to go
+            self.current_goal = self.mission_queue[self.mission_queue_index]
+            self.get_logger().info(
+                f"Auto-proceeding to next waypoint ({self.mission_queue_index + 1}/{len(self.mission_queue)}): "
+                f"{self.current_goal['type']} {self.current_goal['color']} "
+                f"at ({self.current_goal['lat']:.6f}, {self.current_goal['lon']:.6f})"
+            )
+            
+            # Notify GUI of progress
             status_msg = String()
-            status_msg.data = f"ARRIVED|{queue_idx}|pickup"
+            status_msg.data = f"NAVIGATING|{self.mission_queue_index}|{self.current_goal['type']}"
             self.mission_status_pub.publish(status_msg)
             
+            # Start navigation to next goal
+            self.internal_state = 'NAV2_NAVIGATING'
+            self.send_nav2_goal()
+        else:
+            # All waypoints complete!
+            self.get_logger().info(
+                f"=== MISSION COMPLETE === All {len(self.mission_queue)} waypoints completed!"
+            )
+            
+            # Notify GUI
+            status_msg = String()
+            status_msg.data = "MISSION_COMPLETE"
+            self.mission_status_pub.publish(status_msg)
+            
+            # Now switch to manual mode
             self.internal_state = 'WAITING_FOR_PROCEED'
-            self.get_logger().info(f"Pickup complete at {self.current_goal['color']}")
-            
-        elif self.current_goal['type'] == 'dropoff':
-            # Start dropoff action with countdown
-            self.internal_state = 'DROPOFF_ACTION'
-            self.dropoff_start_time = time.time()
-            
-            # Notify GUI that dropoff waypoint is reached (triggers countdown)
-            status_msg = String()
-            status_msg.data = f"ARRIVED|{queue_idx}|dropoff"
-            self.mission_status_pub.publish(status_msg)
-            
-            self.get_logger().info(f"Starting dropoff action - opening cache box: {int(self.dropoff_duration)} seconds")
+            self.mission_queue = []
+            self.mission_queue_index = 0
+            self.current_goal = None
+            self.get_logger().info("Switched to MANUAL mode. Ready for next mission.")
 
     def get_distance_bearing(self, lat1, lon1, lat2, lon2):
         """Calculate distance and bearing between two GPS coordinates"""
@@ -451,29 +599,10 @@ class MissionManager(Node):
         return dist, (bearing + 360) % 360
 
     def control_loop(self):
-        """Main control loop"""
-        if self.internal_state == 'DROPOFF_ACTION':
-            elapsed = time.time() - self.dropoff_start_time
-            remaining = int(self.dropoff_duration - elapsed)
-            
-            if remaining > 0:
-                # Log countdown
-                self.get_logger().info(
-                    f"Opening cache box: {remaining} seconds remaining",
-                    throttle_duration_sec=1
-                )
-            else:
-                # Dropoff action complete
-                self.get_logger().info('Dropoff action complete. Cache box closed.')
-                
-                # Notify GUI that dropoff is complete
-                queue_idx = self.current_goal.get('queue_index', -1)
-                status_msg = String()
-                status_msg.data = f"DROPOFF_COMPLETE|{queue_idx}"
-                self.mission_status_pub.publish(status_msg)
-                
-                self.internal_state = 'WAITING_FOR_PROCEED'
-                self.get_logger().info('Ready for next waypoint.')
+        """Main control loop - minimal, most logic is event-driven"""
+        # The control loop is now mostly event-driven via callbacks
+        # This loop can be used for periodic status checks if needed
+        pass
 
 
 def main(args=None):

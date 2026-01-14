@@ -4,10 +4,11 @@
 # =================================================================================================
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String
+from std_msgs.msg import String, Float64
 from geometry_msgs.msg import Twist
 import json
 import math
+import time
 
 class ConeFollower(Node):
     def __init__(self):
@@ -22,6 +23,17 @@ class ConeFollower(Node):
         self.latest_detections = []       # List of cones currently visible to the camera
         self.image_width = 1280.0         # Camera resolution width (updates dynamically from JSON)
         
+        # State machine for cache box sequence
+        self.state = 'IDLE'               # States: IDLE, FOLLOWING, ROTATING, COUNTDOWN, DONE
+        self.rotation_start_time = None   # Time when we started the 180 degree rotation
+        self.countdown_start_time = None  # Time when we started the countdown
+        self.countdown_duration = 10      # Countdown duration in seconds
+        self.goal_type = None             # 'pickup' or 'dropoff' - only dropoff does rotation+countdown
+        
+        # Compass heading for precise rotation
+        self.current_heading = None       # Current compass heading in degrees (0-360)
+        self.target_heading = None        # Target heading for 180 degree rotation
+        
         # -------------------------------------------------------------------------
         # 1.2: Tuning Parameters (Merged from Old Script)
         # Adjust these numbers to change how the robot behaves.
@@ -35,6 +47,8 @@ class ConeFollower(Node):
         self.linear_vel = 0.22    # Constant driving speed
         self.yaw_threshold = 40   # Logic threshold for "Drive Only" vs "Turn+Drive" (based on 640px width)
         self.conf_threshold = 0.3 # Minimum confidence to accept a detection
+        self.rotation_speed = 0.5 # Angular speed for 180 degree rotation (rad/s)
+        self.heading_tolerance = 5.0  # Degrees tolerance for heading-based rotation
 
         # -------------------------------------------------------------------------
         # 1.3: ROS 2 Communication
@@ -47,6 +61,7 @@ class ConeFollower(Node):
         # Subscribers: Listening for messages IN
         self.create_subscription(String, '/cone_detector/detections', self.detection_callback, 10) # Camera data
         self.create_subscription(String, '/auto/cone_follow/trigger', self.trigger_callback, 10)   # remote control / brain commands
+        self.create_subscription(Float64, '/mavros/global_position/compass_hdg', self.compass_callback, 10)  # Compass heading
 
         # Timer: The heartbeat of the node. Runs the control loop 10 times a second (0.1s).
         self.timer = self.create_timer(0.1, self.control_loop)
@@ -57,10 +72,17 @@ class ConeFollower(Node):
     # STAGE 2: INPUT HANDLING (Callbacks)
     # =================================================================================================
 
+    def compass_callback(self, msg):
+        """
+        Received compass heading from mavros.
+        Heading is in degrees (0-360, where 0 is North).
+        """
+        self.current_heading = msg.data
+
     def trigger_callback(self, msg):
         """
         Received a command from the main brain or user.
-        Commands: 'stop' or a color like 'blue', 'orange'.
+        Commands: 'stop' or 'color|type' (e.g., 'yellow|dropoff', 'blue|pickup').
         """
         command = msg.data.lower().strip()
         
@@ -68,14 +90,19 @@ class ConeFollower(Node):
             # Stop everything immediately
             self.active = False
             self.target_color = None
+            self.goal_type = None
+            self.state = 'IDLE'
             self.stop_rover()
             self.get_logger().info('Cone Follower STOPPED')
         else:
-            # Start following a specific color
-            self.target_color = command
+            # Parse color and goal type (format: "color|type" or just "color")
+            parts = command.split('|')
+            self.target_color = parts[0].strip()
+            self.goal_type = parts[1].strip() if len(parts) > 1 else 'pickup'  # default to pickup
             self.active = True
+            self.state = 'FOLLOWING'
             self.latest_detections = [] # Clear old data so we don't react to ghosts
-            self.get_logger().info(f'Cone Follower ACTIVATED. Target: {self.target_color}')
+            self.get_logger().info(f'Cone Follower ACTIVATED. Target: {self.target_color} ({self.goal_type})')
             self.status_pub.publish(String(data="BUSY"))
 
     def detection_callback(self, msg):
@@ -124,6 +151,23 @@ class ConeFollower(Node):
         """Helper to act just stop the wheels."""
         self.velocity_pub.publish(Twist())
 
+    def normalize_heading(self, heading):
+        """Normalize heading to 0-360 range."""
+        while heading < 0:
+            heading += 360
+        while heading >= 360:
+            heading -= 360
+        return heading
+    
+    def heading_error(self, target, current):
+        """Calculate the shortest angular distance between two headings (-180 to 180)."""
+        diff = target - current
+        while diff > 180:
+            diff -= 360
+        while diff < -180:
+            diff += 360
+        return diff
+
     # =================================================================================================
     # STAGE 3: MAIN CONTROL LOOP
     # This runs 10 times per second.
@@ -133,7 +177,67 @@ class ConeFollower(Node):
         # If we aren't active or don't have a target color, do nothing.
         if not self.active or not self.target_color:
             return
+        
+        # =========================================================================================
+        # STATE MACHINE
+        # =========================================================================================
+        
+        # --- STATE: ROTATING (180 degree turn after reaching cone using compass) ---
+        if self.state == 'ROTATING':
+            if self.current_heading is None:
+                # No compass data yet, wait
+                self.get_logger().warn('Waiting for compass heading...', throttle_duration_sec=1.0)
+                return
+            
+            # If target heading wasn't set (no compass at goal reach), set it now
+            if self.target_heading is None:
+                self.target_heading = self.normalize_heading(self.current_heading + 180.0)
+                self.get_logger().info(f'Target heading set: {self.current_heading:.1f}° -> {self.target_heading:.1f}°')
+            
+            # Calculate heading error to target
+            error = self.heading_error(self.target_heading, self.current_heading)
+            
+            if abs(error) <= self.heading_tolerance:
+                # Rotation complete, start countdown
+                self.stop_rover()
+                self.state = 'COUNTDOWN'
+                self.countdown_start_time = time.time()
+                self.get_logger().info(f'Rotation complete! Heading: {self.current_heading:.1f}° (target: {self.target_heading:.1f}°)')
+                self.get_logger().info('Starting cache box sequence...')
+            else:
+                # Keep rotating toward target heading
+                twist = Twist()
+                # Use proportional control for smoother approach, with min speed
+                angular_speed = max(0.2, min(self.rotation_speed, abs(error) * 0.02))
+                # Rotate in the direction of shorter path
+                twist.angular.z = angular_speed if error > 0 else -angular_speed
+                self.velocity_pub.publish(twist)
+                self.get_logger().info(f'Rotating 180°... Current: {self.current_heading:.1f}° -> Target: {self.target_heading:.1f}° (error: {error:.1f}°)', throttle_duration_sec=0.5)
+            return
+        
+        # --- STATE: COUNTDOWN (Opening cache box countdown) ---
+        if self.state == 'COUNTDOWN':
+            current_time = time.time()
+            elapsed = current_time - self.countdown_start_time
+            remaining = int(self.countdown_duration - elapsed)
+            
+            if remaining > 0:
+                self.get_logger().info(f'Opening cache box: {remaining} seconds', throttle_duration_sec=1.0)
+            else:
+                # Countdown complete - SUCCESS
+                self.get_logger().info('Opening cache box: 0 seconds')
+                self.get_logger().info('Cache box opened successfully!')
+                self.state = 'DONE'
+                self.active = False
+                self.status_pub.publish(String(data="SUCCESS"))
+                self.get_logger().info(f'Mission complete for {self.target_color} cone!')
+            return
+        
+        # --- STATE: DONE ---
+        if self.state == 'DONE':
+            return
 
+        # --- STATE: FOLLOWING (Normal cone following behavior) ---
         # 3.2: Filter Candidates
         # Look through all detections and find the ones that match our target color.
         target_cone = None
@@ -184,8 +288,6 @@ class ConeFollower(Node):
         # Formula: angular = error * 0.2 / 80
         angular_z = scaled_error * 0.2 / 80.0
         
-
-
         # 4. Check Depth & Success
         depth = target_cone.get('depth_m')
         
@@ -194,9 +296,26 @@ class ConeFollower(Node):
              # STAGE 7: GOAL REACHED
              # =========================================================================================
              self.stop_rover()
-             self.active = False
-             self.status_pub.publish(String(data="SUCCESS"))
              self.get_logger().info(f'Reached {self.target_color} cone! (Dist: {depth:.2f}m)')
+             
+             if self.goal_type == 'dropoff':
+                 # DROPOFF: Do 180° rotation + cache box countdown
+                 self.get_logger().info('Dropoff detected - Starting 180° rotation...')
+                 self.state = 'ROTATING'
+                 # Calculate target heading (current + 180 degrees, normalized to 0-360)
+                 if self.current_heading is not None:
+                     self.target_heading = self.normalize_heading(self.current_heading + 180.0)
+                     self.get_logger().info(f'Current heading: {self.current_heading:.1f}° -> Target: {self.target_heading:.1f}°')
+                 else:
+                     # Fallback: estimate target heading once we get compass data
+                     self.target_heading = None
+                     self.get_logger().warn('No compass data yet, will calculate target once available')
+             else:
+                 # PICKUP: Immediate success, no rotation needed
+                 self.get_logger().info(f'Pickup complete at {self.target_color} cone!')
+                 self.state = 'DONE'
+                 self.active = False
+                 self.status_pub.publish(String(data="SUCCESS"))
              return
 
         # 5. Movement Decision (Yaw Threshold)

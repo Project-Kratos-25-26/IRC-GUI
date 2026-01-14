@@ -167,8 +167,8 @@ function refreshMissionPlan() {
 }
 
 function renderMissionPlanGrid(data) {
-    const colors = ['red', 'green', 'blue', 'yellow'];
-    const colorLabels = { red: 'RED', green: 'GREEN', blue: 'BLUE', yellow: 'YELLOW' };
+    const colors = ['yellow', 'orange', 'blue', 'green'];
+    const colorLabels = { yellow: 'YELLOW', orange: 'ORANGE', blue: 'BLUE', green: 'GREEN' };
     
     let html = '';
     
