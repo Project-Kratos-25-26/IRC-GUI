@@ -19,6 +19,30 @@ function openTab(id) {
 }
 
 // --- VIDEO CONNECTION MANAGEMENT ---
+// --- RECONNECT LOGIC ---
+function retryStream(img) {
+    if (!img.dataset.streamPath) return;
+    // Avoid rapid-fire retries if already disconnected
+    if (img.dataset.isRetrying === 'true') return;
+
+    img.dataset.isRetrying = 'true';
+    console.warn(`[Stream] Connection lost for ${img.dataset.cameraName}, retrying...`);
+
+    // Clear simply to visual indicate issue? Or keep last frame?
+    // img.style.opacity = '0.5'; 
+
+    setTimeout(() => {
+        const parentTab = img.closest('.tab-pane');
+        // Only reconnect if tab is still active
+        if (parentTab && parentTab.id === currentActiveTab) {
+            // Force URL refresh with timestamp
+            img.src = `${img.dataset.streamPath}?t=${new Date().getTime()}`;
+            img.style.opacity = '1';
+        }
+        img.dataset.isRetrying = 'false';
+    }, 1000); // 1-second retry delay
+}
+
 function manageVideoStreams() {
     // Find all camera images
     const cams = document.querySelectorAll('img.camera-feed');
@@ -34,16 +58,21 @@ function manageVideoStreams() {
 
                 // If backend says this camera is active, ENABLE stream
                 if (activeCameras.includes(camName)) {
-                    // Restore stream if needed
-                    if (!img.src.endsWith(img.dataset.streamPath)) {
+                    // Reset or Initialize Stream
+                    // We use 'includes' instead of 'endsWith' to allow for '?t=' timestamps
+                    if (!img.src || !img.src.includes(img.dataset.streamPath)) {
                         img.src = img.dataset.streamPath;
                         img.style.opacity = '1'; // Ensure visible
                     }
+
+                    // Attach Robust Error Handler
+                    img.onerror = function () { retryStream(this); };
+
                 } else {
-                    // Backend says inactive: DISABLE stream to save bandwidth/connections
-                    // And show "NO SIGNAL" alt text
+                    // Backend says inactive: DISABLE stream
                     img.removeAttribute('src');
-                    img.style.opacity = '0.5'; // Dim it to indicate offline state visually
+                    img.style.opacity = '0.5';
+                    img.onerror = null; // Clear handler
                 }
             }
         } else {
@@ -1331,3 +1360,48 @@ function pollMissionStatus() {
 
 // Start polling immediately
 setInterval(pollMissionStatus, 2000);
+
+// --- UI SOUND EFFECTS ---
+const fahAudio = new Audio('https://cdn.jsdelivr.net/gh/0bx0/Fah-/Fahh%20Sound%20Effect.mp3');
+let soundEnabled = localStorage.getItem('soundEnabled') !== 'false'; // Default true (strings 'true' or null -> true)
+
+function toggleSound(enabled) {
+    soundEnabled = enabled;
+    localStorage.setItem('soundEnabled', enabled);
+    if (enabled) playSound(); // Preview
+}
+
+function playSound() {
+    if (soundEnabled && fahAudio) {
+        fahAudio.currentTime = 0;
+        // Low volume to not be annoying? Or full blast? User asked for effect.
+        fahAudio.volume = 0.5;
+        fahAudio.play().catch(e => {
+            // Browsers block audio until user interaction. 
+            // Since we trigger this *on* user interaction, it should be fine.
+            console.log('Audio play blocked:', e);
+        });
+    }
+}
+
+// Global Interaction Listener
+document.addEventListener('click', (e) => {
+    // Check if element is interactive.
+    // We target: buttons, links, inputs, selects, and specific class containers that act as buttons.
+    const target = e.target.closest('button, a, input, select, .cam-slot, .mission-grid-cell, .tab-btn');
+    if (target) {
+        playSound();
+    }
+});
+
+// Initialize Checkbox on Load
+document.addEventListener('DOMContentLoaded', () => {
+    const toggle = document.getElementById('sound-toggle');
+    if (toggle) {
+        toggle.checked = soundEnabled;
+    }
+});
+
+// Expose globally
+window.toggleSound = toggleSound;
+window.playSound = playSound;
