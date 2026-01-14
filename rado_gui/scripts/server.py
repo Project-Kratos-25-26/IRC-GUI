@@ -222,7 +222,7 @@ def run_script():
         script_name = data.get('script', '')
         
         # Only allow specific scripts for security
-        allowed_scripts = ['start_mission.sh', 'start_drive.sh', 'start_arm.sh', 'start_ld.sh', 'start_cameras.sh']
+        allowed_scripts = ['start_mission.sh', 'start_drive.sh', 'start_arm.sh', 'start_ld.sh', 'start_cameras.sh', 'stop_mission.sh']
         
         if script_name not in allowed_scripts:
             return jsonify({'success': False, 'error': f'Script not allowed: {script_name}'}), 403
@@ -239,9 +239,17 @@ def run_script():
         if 'DISPLAY' not in env:
             env['DISPLAY'] = ':0'
         
+        # Prepare command with arguments
+        cmd = ['bash', script_path]
+        script_args = data.get('args', [])
+        if isinstance(script_args, list):
+            cmd.extend(script_args)
+        elif isinstance(script_args, str):
+            cmd.append(script_args)
+            
         # Run script directly - it will open its own tmux terminal
         subprocess.Popen(
-            ['bash', script_path],
+            cmd,
             cwd=scripts_dir,
             env=env,
             start_new_session=True,

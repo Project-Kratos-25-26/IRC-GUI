@@ -250,10 +250,30 @@ input[type="range"] {
     padding: 5px;
 }
 
-.mission-row-color.red { background: #e74c3c; color: #fff; }
-.mission-row-color.green { background: #27ae60; color: #fff; }
-.mission-row-color.blue { background: #3498db; color: #fff; }
-.mission-row-color.yellow { background: #f1c40f; color: #000; }
+.mission-row-color.red {
+    background: #e74c3c;
+    color: #fff;
+}
+
+.mission-row-color.green {
+    background: #27ae60;
+    color: #fff;
+}
+
+.mission-row-color.blue {
+    background: #3498db;
+    color: #fff;
+}
+
+.mission-row-color.yellow {
+    background: #f1c40f;
+    color: #000;
+}
+
+.mission-row-color.orange {
+    background: #ff9d15;
+    color: #000000;
+}
 
 .mission-cell {
     background: #222;
@@ -636,4 +656,150 @@ select {
     position: absolute;
     bottom: 0;
     transition: height 0.05s;
+}
+
+/* PROCESS CONTROL GRID */
+.process-grid {
+    display: grid;
+    grid-template-columns: 100px 60px 1fr;
+    gap: 10px;
+    align-items: center;
+}
+
+.process-grid>div {
+    font-size: 14px;
+}
+
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #444;
+    margin: 0 auto;
+    border: 1px solid #666;
+    transition: all 0.3s;
+}
+
+.status-dot.active {
+    background: #2ecc71;
+    box-shadow: 0 0 8px #2ecc71;
+    border-color: #27ae60;
+}
+
+.status-dot.error {
+    background: #e74c3c;
+    box-shadow: 0 0 8px #e74c3c;
+}
+
+.proc-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.proc-actions button {
+    padding: 5px;
+    font-size: 12px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* --- COMPETITION MODE STYLES (RECON TAB) --- */
+/* Refined for clarity and reduced clutter */
+
+#tab-recon .grid-2 {
+    gap: 30px;
+    /* More breathing room */
+}
+
+#tab-recon .card {
+    border: 1px solid #333;
+    /* Softer border */
+    background: #1e1e1e;
+    /* Standard panel bg */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    padding: 15px;
+}
+
+#tab-recon h3 {
+    color: #ccc;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    border-bottom: 1px solid #333;
+    margin-bottom: 20px;
+    padding-bottom: 8px;
+    text-transform: uppercase;
+}
+
+/* GPS Dashboard Look */
+#tab-recon #recon-lat,
+#tab-recon #recon-lon {
+    font-family: 'Roboto Mono', 'Courier New', monospace;
+    font-size: 18px;
+    color: #4fc3f7;
+    /* Soft Cyan */
+    background: rgba(0, 0, 0, 0.3);
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid #333;
+    min-width: 120px;
+    display: inline-block;
+    text-align: right;
+}
+
+/* Status Pills */
+#tab-recon #status-raspi-recon,
+#tab-recon #status-jetson-recon {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 12px;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    color: #fff;
+    min-width: 70px;
+    text-align: center;
+    display: inline-block;
+}
+
+/* Log Target Section */
+#tab-recon #obj-select {
+    padding: 8px 12px;
+    border: 1px solid #444;
+    margin-bottom: 15px;
+    font-size: 14px;
+    height: 40px;
+    background: #252525;
+}
+
+#tab-recon .btn-red,
+#tab-recon .btn-yellow,
+#tab-recon .btn-orange,
+#tab-recon .btn-blue,
+#tab-recon .btn-green {
+    height: 40px;
+    font-size: 14px;
+    border-radius: 4px;
+    border: none;
+    margin-bottom: 10px;
+}
+
+/* Main Log Button */
+#tab-recon .btn-blue[onclick="sendLog()"] {
+    margin-top: 5px;
+    height: 45px;
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+/* Visuals Row */
+#tab-recon #joyCanvas,
+#tab-recon #vector-canvas {
+    border: 1px solid #333;
+    border-radius: 4px;
+    background: #151515;
 }

@@ -92,10 +92,13 @@ echo "[LOCAL] Starting Heartbeat..."
         fi
         
         # Write status as JSON for frontend
-        echo "{\"raspi\": \"$RASPI_STATUS\", \"jetson\": \"$JETSON_STATUS\"}" > data/ping_status.json
+        echo "{\"raspi\": \"$RASPI_STATUS\", \"jetson\": \"$JETSON_STATUS\"}" > "data/ping_status.json"
         
         sleep 2
     done
 ) &
+
+# ---- Start Mission Status Monitor ----
+bash scripts/monitor_mission.sh &
 
 python3 scripts/server.py

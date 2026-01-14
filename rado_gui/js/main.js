@@ -69,41 +69,119 @@ function sendCmd(cmd) {
     if (cmd === 'PROCEED') updateMode('AUTO');
 }
 
+// --- SYSTEM COMMAND HANDLER ---
+// Handles buttons like "Initialize Drive", "Start Mission", "Manual Mode", etc.
 function sendSysCommand(cmd) {
+    // -------------------------------------------------------------------------
+    // 1. OFFLINE GUARD
+    // -------------------------------------------------------------------------
+    // Define a list of commands that require the Raspberry Pi to be connected.
+    // These commands involve starting hardware or changing drive modes.
     const blockedCmds = ['init_drive', 'init_ld', 'init_arm', 'manual_mode', 'auto_mode'];
+
+    // Check if the command is in the blocked list AND if the global 'raspiStatus'
+    // (updated by the polling loop) is NOT 'ONLINE'.
     if (blockedCmds.includes(cmd) && raspiStatus !== 'ONLINE') {
-        alert("Cannot Execute: Raspberry Pi is OFFLINE!");
+        // If offline, block the command and alert the user.
+        alert("Cannot Execute: Raspberry Pi is OFFLINE! Please check connection.");
         return;
     }
 
-    // Handle init_mission locally via Flask API (runs on laptop, SSHs to Jetson)
+    // -------------------------------------------------------------------------
+    // 2. MISSION INITIALIZATION (Local API)
+    // -------------------------------------------------------------------------
+    // 'init_mission' is the primary entry point for starting the autonomy stack.
+    // It triggers `start_mission.sh` with the 'all' argument.
+    //
+    // Workflow:
+    // 1. User clicks "Initialize Mission" (or similar button).
+    // 2. Javascript POSTs to /api/run_script -> start_mission.sh.
+    // 3. Script checks for existing 'mission_ui' tmux session.
+    // 4. If new, it creates the session and launches 'terminator'.
+    // 5. It then recursively calls itself for each component (rtabmap, nav2, etc.).
+    // 6. Each recursive call adds a new pane ("Lego block") to the tmux window.
+    // 7. Result: A single window tiled with 7+ terminals, each running one node.
     if (cmd === 'init_mission') {
         console.log(`[DEBUG] init_mission called - running via local API`);
+
         fetch('/api/run_script', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ script: 'start_mission.sh' })
+            body: JSON.stringify({
+                script: 'start_mission.sh',
+                args: ['all'] // Explicitly launch ALL components for the main init button
+            })
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                console.log('Mission init started:', data.message);
-            } else {
-                alert('Failed to start mission: ' + data.error);
-            }
-        })
-        .catch(err => {
-            console.error('Error starting mission:', err);
-            alert('Error starting mission: ' + err);
-        });
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Mission init started:', data.message);
+                } else {
+                    alert('Failed to start mission: ' + data.error);
+                }
+            })
+            .catch(err => {
+                console.error('Error starting mission:', err);
+                alert('Error starting mission: ' + err);
+            });
+
         return;
     }
 
+    // -------------------------------------------------------------------------
+    // 3. DRIVE INITIALIZATION (Local API)
+    // -------------------------------------------------------------------------
+    // 'init_drive' is also special: it starts the ROS2 drive stack.
+    // This triggers `start_drive.sh` on the laptop, which SSHs into the Pi.
+    if (cmd === 'init_drive') {
+        console.log(`[DEBUG] init_drive called - running via local API`);
+
+        // Call the backend API endpoint '/api/run_script'
+        fetch('/api/run_script', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ script: 'start_drive.sh' }) // Specify the script to run
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // The script started successfully.
+                    console.log('Drive init started successfully:', data.message);
+
+                    // Optimistic UI Update:
+                    // We assume the drive will start up, so we switch the UI badge
+                    // to 'MANUAL' immediately to give the user visual feedback.
+                    updateMode('MANUAL');
+                } else {
+                    // The server blocked the script or it failed to launch.
+                    console.error('Drive init failed:', data.error);
+                    alert('Failed to start drive: ' + data.error);
+                }
+            })
+            .catch(err => {
+                // Handle connection errors to the local Flask server.
+                console.error('Network/Server Error starting drive:', err);
+                alert('Error starting drive: ' + err);
+            });
+
+        // Return early to prevent double-sending (API call vs ROS message).
+        return;
+    }
+
+    // -------------------------------------------------------------------------
+    // 4. STANDARD ROS COMMANDS
+    // -------------------------------------------------------------------------
+    // For normal commands (e.g., 'manual_mode', 'auto_mode', etc.), we just
+    // publish them to the '/sys/command' ROS topic.
+    // The 'state_manager_node' listening on this topic will handle the logic.
     sysPub.publish(new ROSLIB.Message({ data: cmd }));
-    // Optimistic UI update for mode
-    if (cmd === 'manual_mode' || cmd === 'init_drive') updateMode('MANUAL');
+
+    // Optimistic UI updates for responsiveness:
+    // If we just clicked 'Manual Mode', update the badge immediately.
+    if (cmd === 'manual_mode') updateMode('MANUAL');
     if (cmd === 'auto_mode') updateMode('AUTO');
-    console.log(`System Command sent: ${cmd}`);
+
+    console.log(`System Command sent to ROS: ${cmd}`);
 }
 
 function updateMode(mode) {
@@ -175,24 +253,24 @@ function refreshMissionPlan() {
         })
         .catch(e => {
             console.error("Failed to load mission plan:", e);
-            document.getElementById('mission-plan-grid').innerHTML = 
+            document.getElementById('mission-plan-grid').innerHTML =
                 '<div style="color:red; text-align:center; padding:20px;">Failed to load mission plan</div>';
         });
 }
 
 function renderMissionPlanGrid(data) {
-    const colors = ['yellow', 'orange', 'blue', 'green'];
-    const colorLabels = { yellow: 'YELLOW', orange: 'ORANGE', blue: 'BLUE', green: 'GREEN' };
-    
+    const colors = ['red', 'yellow', 'orange', 'blue', 'green'];
+    const colorLabels = { red: 'RED', yellow: 'YELLOW', orange: 'ORANGE', blue: 'BLUE', green: 'GREEN' };
+
     let html = '';
-    
+
     colors.forEach(color => {
         const pickups = data.pickup?.[color] || [];
         const dropoffs = data.dropoff?.[color] || [];
-        
+
         html += `<div class="mission-row">`;
         html += `<div class="mission-row-color ${color}">${colorLabels[color]}</div>`;
-        
+
         // Pickup column
         html += `<div class="mission-cell ${pickups.length === 0 ? 'empty' : ''}">`;
         if (pickups.length === 0) {
@@ -214,7 +292,7 @@ function renderMissionPlanGrid(data) {
             });
         }
         html += `</div>`;
-        
+
         // Dropoff column
         html += `<div class="mission-cell ${dropoffs.length === 0 ? 'empty' : ''}">`;
         if (dropoffs.length === 0) {
@@ -236,10 +314,10 @@ function renderMissionPlanGrid(data) {
             });
         }
         html += `</div>`;
-        
+
         html += `</div>`;
     });
-    
+
     document.getElementById('mission-plan-grid').innerHTML = html;
 }
 
@@ -256,25 +334,25 @@ function addToQueue(id, type, color, lat, lon) {
         missionQueue.push({ id, type, color, lat, lon, status: 'pending' });
         addMissionLog(`Added to queue: ${type} ${color} (#${missionQueue.length})`);
     }
-    
+
     renderMissionQueue();
     renderMissionPlanGrid(missionPlanData);
 }
 
 function renderMissionQueue() {
     const container = document.getElementById('mission-queue');
-    
+
     if (missionQueue.length === 0) {
         container.innerHTML = '<div class="queue-empty">No waypoints in queue. Click coordinates above to add.</div>';
         return;
     }
-    
+
     let html = '';
     missionQueue.forEach((item, idx) => {
         const isActive = idx === currentMissionIndex && missionActive;
         const isCompleted = item.status === 'completed';
         const colorStyle = item.color === 'yellow' ? '#f1c40f' : item.color;
-        
+
         html += `
             <div class="queue-item ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}">
                 <div class="queue-item-order">${idx + 1}</div>
@@ -291,17 +369,17 @@ function renderMissionQueue() {
                 </div>
             </div>`;
     });
-    
+
     container.innerHTML = html;
 }
 
 function moveQueueItem(index, direction) {
     const newIndex = index + direction;
     if (newIndex < 0 || newIndex >= missionQueue.length) return;
-    
+
     const item = missionQueue.splice(index, 1)[0];
     missionQueue.splice(newIndex, 0, item);
-    
+
     renderMissionQueue();
     addMissionLog(`Reordered queue: ${item.type} ${item.color} now #${newIndex + 1}`);
 }
@@ -325,12 +403,12 @@ function clearMissionQueue() {
 // --- COORDINATE EDITING ---
 function openEditModal(type, color, lat, lon) {
     editingCoord = { type, color, lat, lon };
-    
+
     document.getElementById('edit-type').value = type.toUpperCase();
     document.getElementById('edit-color').value = color.toUpperCase();
     document.getElementById('edit-lat').value = lat;
     document.getElementById('edit-lon').value = lon;
-    
+
     document.getElementById('edit-coord-modal').style.display = 'flex';
 }
 
@@ -341,15 +419,15 @@ function closeEditModal() {
 
 function saveCoordEdit() {
     if (!editingCoord) return;
-    
+
     const newLat = parseFloat(document.getElementById('edit-lat').value);
     const newLon = parseFloat(document.getElementById('edit-lon').value);
-    
+
     if (isNaN(newLat) || isNaN(newLon)) {
         alert('Invalid coordinates');
         return;
     }
-    
+
     fetch('/api/mission_plan/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -362,29 +440,29 @@ function saveCoordEdit() {
             new_lon: newLon
         })
     })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            addMissionLog(`Updated ${editingCoord.type} ${editingCoord.color} coordinates`);
-            closeEditModal();
-            refreshMissionPlan();
-        } else {
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                addMissionLog(`Updated ${editingCoord.type} ${editingCoord.color} coordinates`);
+                closeEditModal();
+                refreshMissionPlan();
+            } else {
+                alert('Failed to update coordinates');
+            }
+        })
+        .catch(e => {
+            console.error('Error updating coordinates:', e);
             alert('Failed to update coordinates');
-        }
-    })
-    .catch(e => {
-        console.error('Error updating coordinates:', e);
-        alert('Failed to update coordinates');
-    });
+        });
 }
 
 function deleteCoord() {
     if (!editingCoord) return;
-    
+
     if (!confirm(`Delete ${editingCoord.type} ${editingCoord.color} at (${editingCoord.lat.toFixed(6)}, ${editingCoord.lon.toFixed(6)})?`)) {
         return;
     }
-    
+
     fetch('/api/mission_plan/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -395,26 +473,26 @@ function deleteCoord() {
             lon: editingCoord.lon
         })
     })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            addMissionLog(`Deleted ${editingCoord.type} ${editingCoord.color}`);
-            closeEditModal();
-            refreshMissionPlan();
-            // Also remove from queue if present
-            missionQueue = missionQueue.filter(q => 
-                !(q.type === editingCoord.type && q.color === editingCoord.color && 
-                  Math.abs(q.lat - editingCoord.lat) < 0.000001 && Math.abs(q.lon - editingCoord.lon) < 0.000001)
-            );
-            renderMissionQueue();
-        } else {
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                addMissionLog(`Deleted ${editingCoord.type} ${editingCoord.color}`);
+                closeEditModal();
+                refreshMissionPlan();
+                // Also remove from queue if present
+                missionQueue = missionQueue.filter(q =>
+                    !(q.type === editingCoord.type && q.color === editingCoord.color &&
+                        Math.abs(q.lat - editingCoord.lat) < 0.000001 && Math.abs(q.lon - editingCoord.lon) < 0.000001)
+                );
+                renderMissionQueue();
+            } else {
+                alert('Failed to delete coordinate');
+            }
+        })
+        .catch(e => {
+            console.error('Error deleting coordinate:', e);
             alert('Failed to delete coordinate');
-        }
-    })
-    .catch(e => {
-        console.error('Error deleting coordinate:', e);
-        alert('Failed to delete coordinate');
-    });
+        });
 }
 
 // --- MULTI-WAYPOINT MISSION EXECUTION ---
@@ -423,19 +501,19 @@ function proceedWithQueue() {
         alert("Please add waypoints to the queue first!");
         return;
     }
-    
+
     if (raspiStatus !== 'ONLINE') {
         alert("Cannot Proceed: Raspberry Pi is OFFLINE!");
         return;
     }
-    
+
     // Start mission from beginning if not active
     if (!missionActive) {
         currentMissionIndex = 0;
         missionActive = true;
         missionQueue.forEach(q => q.status = 'pending');
     }
-    
+
     // Send current goal to mission manager
     sendCurrentGoal();
 }
@@ -448,28 +526,28 @@ function sendCurrentGoal() {
         addMissionLog('Mission queue complete!');
         return;
     }
-    
+
     const goal = missionQueue[currentMissionIndex];
     goal.status = 'active';
-    
+
     // Show mission status
     showMissionStatus(`Navigating to #${currentMissionIndex + 1}: ${goal.type} ${goal.color}`);
-    
+
     // Publish goal to ROS
     const goalData = `QUEUE|${currentMissionIndex}|${goal.type}|${goal.color}|${goal.lat}|${goal.lon}`;
-    
+
     const goalPub = new ROSLIB.Topic({
         ros: ros,
         name: '/mission/set_goal',
         messageType: 'std_msgs/String'
     });
     goalPub.publish(new ROSLIB.Message({ data: goalData }));
-    
+
     // Send PROCEED command
     setTimeout(() => {
         sysPub.publish(new ROSLIB.Message({ data: 'PROCEED' }));
     }, 100);
-    
+
     addMissionLog(`Proceeding to #${currentMissionIndex + 1}: ${goal.type} ${goal.color}`);
     updateMode('AUTO');
     renderMissionQueue();
@@ -486,20 +564,20 @@ function showDropoffCountdown(seconds) {
     const panel = document.getElementById('mission-status-panel');
     const display = document.getElementById('mission-progress-display');
     panel.style.display = 'block';
-    
+
     let remaining = seconds;
     display.innerHTML = `
         <div class="mission-action-text">Opening cache box</div>
         <div class="mission-countdown">${remaining}</div>
     `;
-    
+
     if (dropoffCountdown) clearInterval(dropoffCountdown);
-    
+
     dropoffCountdown = setInterval(() => {
         remaining--;
         const countdownEl = display.querySelector('.mission-countdown');
         if (countdownEl) countdownEl.textContent = remaining;
-        
+
         if (remaining <= 0) {
             clearInterval(dropoffCountdown);
             dropoffCountdown = null;
@@ -514,11 +592,11 @@ function onDropoffComplete() {
         goal.status = 'completed';
         addMissionLog(`Completed dropoff at ${goal.color}`);
     }
-    
+
     // Move to next waypoint
     currentMissionIndex++;
     renderMissionQueue();
-    
+
     if (currentMissionIndex < missionQueue.length) {
         // Proceed to next goal automatically
         setTimeout(() => {
@@ -534,9 +612,9 @@ function onDropoffComplete() {
 
 function onWaypointReached(goalIndex, goalType) {
     if (goalIndex !== currentMissionIndex) return;
-    
+
     const goal = missionQueue[currentMissionIndex];
-    
+
     if (goalType === 'dropoff') {
         // Show countdown for dropoff
         showDropoffCountdown(10);
@@ -546,10 +624,10 @@ function onWaypointReached(goalIndex, goalType) {
             goal.status = 'completed';
             addMissionLog(`Completed pickup at ${goal.color}`);
         }
-        
+
         currentMissionIndex++;
         renderMissionQueue();
-        
+
         if (currentMissionIndex < missionQueue.length) {
             setTimeout(() => {
                 sendCurrentGoal();
@@ -568,10 +646,10 @@ function stopMission() {
         clearInterval(dropoffCountdown);
         dropoffCountdown = null;
     }
-    
+
     // Send stop command
     sysPub.publish(new ROSLIB.Message({ data: 'MANUAL' }));
-    
+
     document.getElementById('mission-status-panel').style.display = 'none';
     addMissionLog('Mission stopped');
     updateMode('MANUAL');
@@ -591,7 +669,7 @@ function proceedWithGoal() {
 
 function clearMissionPlan() {
     if (!confirm("Are you sure you want to clear all mission data?")) return;
-    
+
     fetch('/api/mission_plan/clear', { method: 'POST' })
         .then(r => r.json())
         .then(data => {
@@ -615,7 +693,7 @@ function clearMissionPlan() {
 
 // Load mission plan when switching to mission tab
 const originalOpenTab = openTab;
-window.openTab = function(id) {
+window.openTab = function (id) {
     originalOpenTab(id);
     if (id === 'tab-mission') {
         refreshMissionPlan();
@@ -1143,5 +1221,113 @@ pollTelemetry(); // Initial call
 
 
 // --- CONTROLLER VISUALIZATION ---
-// Visualization is handled by ROS subscriptions in ros_module.js
-// via rosbridge websocket (/joy0 for Thrustmaster, /joy for PS5)
+// --- MISSION PROCESS CONTROL (The "Lego" System) ---
+//
+// Overview:
+// Instead of launching one giant script that does everything, we now have granular control.
+// The user can launch individual components (e.g., just 'nav2') which adds a specific pane 
+// to the shared tmux session.
+//
+// Key Functions:
+// - launchComponent(target): Starts a specific node/launch file.
+// - stopComponent(target): Kills a specific pane/process.
+// - killAllMission(): The "Big Red Button". Kills everything.
+// - pollMissionStatus(): Checks what is actually running on the Jetson.
+
+/**
+ * launches a specific component by name (e.g., 'rtabmap', 'nav2').
+ * Calls start_mission.sh <target> on the backend.
+ * @param {string} target - The logical name of the component.
+ */
+function launchComponent(target) {
+    console.log(`Launching component: ${target}`);
+    fetch('/api/run_script', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            script: 'start_mission.sh',
+            args: [target]
+        })
+    }).catch(err => console.error("Launch error:", err));
+}
+
+/**
+ * Stops a specific component.
+ * Calls stop_mission.sh <target> on the backend.
+ * @param {string} target - The logical name of the component.
+ */
+function stopComponent(target) {
+    if (!confirm(`Stop ${target.toUpperCase()}?`)) return;
+
+    console.log(`Stopping component: ${target}`);
+    fetch('/api/run_script', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            script: 'stop_mission.sh',
+            args: [target]
+        })
+    }).catch(err => console.error("Stop error:", err));
+}
+
+/**
+ * EMERGENCY STOP / KILL SWITCH
+ * Kills the entire tmux session locally AND executes pkill on the remote Jetson
+ * to ensure no zombie processes remain.
+ */
+function killAllMission() {
+    if (!confirm("⚠️ KILL ALL MISSION PROCESSES?\nThis will stop everything immediately.")) return;
+
+    console.log("KILLING ALL MISSION PROCESSES");
+    fetch('/api/run_script', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            script: 'stop_mission.sh',
+            args: ['all']
+        })
+    }).then(() => alert("All processes kill signal sent."))
+        .catch(err => alert("Kill failed: " + err));
+}
+
+/**
+ * Polls the mission_status.json file generated by the backend monitor script.
+ * Updates the UI dots (Green/Grey) based on the presence of processes.
+ * This runs every 2 seconds.
+ * 
+ * Note: If the file is missing (monitor script not running/Jetson offline), 
+ * it mostly ignores errors to prevent console spam, but UI will remain grey.
+ */
+function pollMissionStatus() {
+    // Poll the status JSON generated by monitor_mission.sh
+    fetch('data/mission_status.json?nocache=' + new Date().getTime())
+        .then(res => res.json())
+        .then(status => {
+            const map = {
+                'rtabmap': 'dot-rtabmap',
+                'tf': 'dot-tf',
+                'nav2': 'dot-nav2',
+                'velclamp': 'dot-velclamp',
+                'mavros': 'dot-mavros',
+                'cone': 'dot-cone',
+                'rado': 'dot-rado'
+            };
+
+            for (const [key, id] of Object.entries(map)) {
+                const el = document.getElementById(id);
+                if (el) {
+                    if (status[key] === true) {
+                        el.classList.add('active'); // Turn Green
+                    } else {
+                        el.classList.remove('active'); // Turn Grey
+                    }
+                }
+            }
+        })
+        .catch(err => {
+            // Ignore errors (file might be busy or not created yet)
+        });
+}
+
+// Start polling immediately
+setInterval(pollMissionStatus, 2000);
