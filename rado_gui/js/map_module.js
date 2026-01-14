@@ -26,22 +26,10 @@ function updateMap(lat, lon) {
     pathPolyline.addLatLng(pos);
 }
 
+// Expose updateRoverMarker globally so ros_module.js can call it
+window.updateRoverMarker = function(lat, lon) {
+    updateMap(lat, lon);
+};
+
 // Initialize map immediately
 initMap();
-
-// Subscribe to GPS here since it relates to mapping
-const gpsSub = new ROSLIB.Topic({
-    ros: ros, // 'ros' comes from ros_module.js
-    name: CONFIG.TOPICS.GPS,
-    messageType: 'sensor_msgs/NavSatFix'
-});
-
-gpsSub.subscribe((msg) => {
-    // Update Text UI
-    if(document.getElementById('recon-lat')) {
-        document.getElementById('recon-lat').innerText = msg.latitude.toFixed(6);
-        document.getElementById('recon-lon').innerText = msg.longitude.toFixed(6);
-    }
-    // Update Map
-    updateMap(msg.latitude, msg.longitude);
-});

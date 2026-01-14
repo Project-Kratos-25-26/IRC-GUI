@@ -1,7 +1,7 @@
 // Configuration Constants
 const CONFIG = {
-    // ROSBridge WebSocket URL
-    ROSBRIDGE_URL: `ws://${window.location.hostname}:9090`,
+    // ROSBridge WebSocket URL (rosbridge runs on Orin where ROS nodes are)
+    ROSBRIDGE_URL: `ws://192.168.1.10:9090`,
 
     // Camera Sources Map (6 USB cameras via GStreamer)
     CAMERA_SOURCES: {

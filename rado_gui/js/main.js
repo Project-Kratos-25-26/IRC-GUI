@@ -76,13 +76,27 @@ function sendSysCommand(cmd) {
         return;
     }
 
-    // Check Jetson status for init_mission
+    // Handle init_mission locally via Flask API (runs on laptop, SSHs to Jetson)
     if (cmd === 'init_mission') {
-        console.log(`[DEBUG] init_mission called. jetsonStatus = ${jetsonStatus}`);
-        if (jetsonStatus !== 'ONLINE') {
-            alert("Cannot Execute: Jetson Orin is OFFLINE!");
-            return;
-        }
+        console.log(`[DEBUG] init_mission called - running via local API`);
+        fetch('/api/run_script', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ script: 'start_mission.sh' })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('Mission init started:', data.message);
+            } else {
+                alert('Failed to start mission: ' + data.error);
+            }
+        })
+        .catch(err => {
+            console.error('Error starting mission:', err);
+            alert('Error starting mission: ' + err);
+        });
+        return;
     }
 
     sysPub.publish(new ROSLIB.Message({ data: cmd }));

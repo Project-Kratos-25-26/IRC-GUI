@@ -12,12 +12,6 @@ echo "   MISSION INITIALIZATION"
 echo "================================="
 echo ""
 
-# Set TTY permissions (may require sudo password)
-echo "Setting TTY permissions..."
-sudo chmod 666 /dev/tty*
-echo "✓ TTY permissions set"
-echo ""
-
 # Commands to run on the Orin (wrapped in SSH)
 SSH_PRE="sshpass -p '${JETSON_PASSWORD}' ssh -tt ${JETSON_USER}@${JETSON_IP}"
 ROS_SRC="source ~/ros2_ws/install/setup.bash"
@@ -35,7 +29,8 @@ CMD_3="${SSH_PRE} '${ROS_SRC} && echo \"Waiting 8s...\" && sleep 8 && ros2 launc
 CMD_4="${SSH_PRE} '${ROS_SRC} && ros2 run kratos_vel_clamp velclamp.py; exec bash'"
 
 # 5. MAVROS (runs last, after 10s delay for everything to initialize)
-CMD_5="${SSH_PRE} '${ROS_SRC} && echo \"Waiting 10s for other nodes...\" && sleep 10 && ros2 launch mavros px4.launch; exec bash'"
+# Set TTY permissions on Jetson before launching MAVROS
+CMD_5="${SSH_PRE} '${ROS_SRC} && echo \"Waiting 10s for other nodes...\" && sleep 10 && sudo chmod 666 /dev/tty* 2>/dev/null; ros2 launch mavros px4.launch; exec bash'"
 
 # 6. Cone Detector (runs on Orin, 3s delay)
 CMD_6="${SSH_PRE} '${ROS_SRC} && echo \"Waiting 3s...\" && sleep 3 && ros2 run cone_detector cone_detector_node; exec bash'"

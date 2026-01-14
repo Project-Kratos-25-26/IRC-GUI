@@ -213,12 +213,53 @@ def health():
     return jsonify({"status": "ok", "cameras": active_count})
 
 
+@app.route("/api/run_script", methods=['POST'])
+def run_script():
+    """Run a local script (for init_mission, etc.)."""
+    import subprocess
+    try:
+        data = request.json
+        script_name = data.get('script', '')
+        
+        # Only allow specific scripts for security
+        allowed_scripts = ['start_mission.sh', 'start_drive.sh', 'start_arm.sh', 'start_ld.sh', 'start_cameras.sh']
+        
+        if script_name not in allowed_scripts:
+            return jsonify({'success': False, 'error': f'Script not allowed: {script_name}'}), 403
+        
+        # Get the scripts directory
+        scripts_dir = os.path.join(STATIC_DIR, 'scripts')
+        script_path = os.path.join(scripts_dir, script_name)
+        
+        if not os.path.exists(script_path):
+            return jsonify({'success': False, 'error': f'Script not found: {script_path}'}), 404
+        
+        # Run the script directly in background (script handles its own terminal via tmux)
+        env = os.environ.copy()
+        if 'DISPLAY' not in env:
+            env['DISPLAY'] = ':0'
+        
+        # Run script directly - it will open its own tmux terminal
+        subprocess.Popen(
+            ['bash', script_path],
+            cwd=scripts_dir,
+            env=env,
+            start_new_session=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        
+        return jsonify({'success': True, 'message': f'Started {script_name}'})
+    except Exception as e:
+        print(f"Error running script: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route("/api/mission_plan")
 def get_mission_plan():
     """Return mission plan data structured for the GUI grid display (reads from Orin)."""
     result = {
-        'pickup': {'red': [], 'green': [], 'blue': [], 'yellow': []},
-        'dropoff': {'red': [], 'green': [], 'blue': [], 'yellow': []}
+        'pickup': {'red': [], 'green': [], 'blue': [], 'yellow': [], 'orange': []},
+        'dropoff': {'red': [], 'green': [], 'blue': [], 'yellow': [], 'orange': []}
     }
     
     try:
@@ -362,13 +403,13 @@ def get_mission_plan_raw():
                 try:
                     result.append({
                         'index': idx,
-                                'type': parts[0].lower().strip(),
-                                'color': parts[1].lower().strip(),
-                                'lat': float(parts[2]),
-                                'lon': float(parts[3])
-                            })
-                        except (ValueError, IndexError):
-                            continue
+                        'type': parts[0].lower().strip(),
+                        'color': parts[1].lower().strip(),
+                        'lat': float(parts[2]),
+                        'lon': float(parts[3])
+                    })
+                except (ValueError, IndexError):
+                    continue
     except Exception as e:
         print(f"Error reading mission plan: {e}")
     
