@@ -12,6 +12,12 @@ echo "   MISSION INITIALIZATION"
 echo "================================="
 echo ""
 
+# Set TTY permissions (may require sudo password)
+echo "Setting TTY permissions..."
+sudo chmod 666 /dev/tty*
+echo "✓ TTY permissions set"
+echo ""
+
 # Commands to run on the Orin (wrapped in SSH)
 SSH_PRE="sshpass -p '${JETSON_PASSWORD}' ssh -tt ${JETSON_USER}@${JETSON_IP}"
 ROS_SRC="source ~/ros2_ws/install/setup.bash"
@@ -28,6 +34,9 @@ CMD_3="${SSH_PRE} '${ROS_SRC} && echo \"Waiting 8s...\" && sleep 8 && ros2 launc
 # 4. VEL CLAMP (No delay specified, running immediately/parallel)
 CMD_4="${SSH_PRE} '${ROS_SRC} && ros2 run kratos_vel_clamp velclamp.py; exec bash'"
 
+# 5. MAVROS (runs last, after 10s delay for everything to initialize)
+CMD_5="${SSH_PRE} '${ROS_SRC} && echo \"Waiting 10s for other nodes...\" && sleep 10 && ros2 launch mavros px4.launch; exec bash'"
+
 # Ensure Session Exists
 if ! tmux has-session -t $SESSION 2>/dev/null; then
     echo "Creating new session: $SESSION"
@@ -38,7 +47,7 @@ if ! tmux has-session -t $SESSION 2>/dev/null; then
     tmux set -t $SESSION pane-border-status top
     tmux set -t $SESSION pane-border-format "#{pane_index}: #{pane_title}"
 
-    # Setup 2x2 Grid
+    # Setup 3x2 Grid (6 panes, using 5)
     # Pane 0 is top-left
     # Split horizontally to get Pane 1 (top-right)
     tmux split-window -h -t $SESSION:0.0
@@ -46,11 +55,13 @@ if ! tmux has-session -t $SESSION 2>/dev/null; then
     tmux split-window -v -t $SESSION:0.0
     # Split Pane 1 vertically to get Pane 3 (bottom-right)
     tmux split-window -v -t $SESSION:0.1
+    # Split Pane 3 horizontally to get Pane 4 (next to VelClamp)
+    tmux split-window -h -t $SESSION:0.3
     
     # Layout should now be:
     # 0 | 1
     # --+--
-    # 2 | 3
+    # 2 | 3 | 4
     tmux select-layout -t $SESSION:0 tiled
 
     # Pane 0: RTABMAP
@@ -77,7 +88,13 @@ if ! tmux has-session -t $SESSION 2>/dev/null; then
     tmux respawn-pane -k -t $SESSION:0.3 "bash"
     tmux send-keys -t $SESSION:0.3 "$CMD_4" C-m
 
-    echo "✓ Session started with 4 remote panes."
+    # Pane 4: MAVROS (runs last)
+    tmux select-pane -t $SESSION:0.4
+    tmux select-pane -T "MAVROS"
+    tmux respawn-pane -k -t $SESSION:0.4 "bash"
+    tmux send-keys -t $SESSION:0.4 "$CMD_5" C-m
+
+    echo "✓ Session started with 5 remote panes."
 
 else
     echo "Session $SESSION already exists. Respawning panes..."
@@ -114,6 +131,17 @@ else
     tmux select-pane -T "VelClamp"
     tmux respawn-pane -k -t $SESSION:0.3 "bash"
     tmux send-keys -t $SESSION:0.3 "$CMD_4" C-m
+
+    # Pane 4: MAVROS (runs last)
+    # Check if pane 4 exists, if not create it
+    if ! tmux list-panes -t $SESSION:0 | grep -q "^4:"; then
+        tmux split-window -h -t $SESSION:0.3
+        tmux select-layout -t $SESSION:0 tiled
+    fi
+    tmux select-pane -t $SESSION:0.4
+    tmux select-pane -T "MAVROS"
+    tmux respawn-pane -k -t $SESSION:0.4 "bash"
+    tmux send-keys -t $SESSION:0.4 "$CMD_5" C-m
     
     echo "✓ Session refreshed."
 fi
