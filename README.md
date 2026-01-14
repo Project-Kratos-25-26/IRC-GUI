@@ -1,4 +1,48 @@
-# Web GUI & System Control Documentation
+# RADO Mission Control
+
+## Repository Structure
+
+This repository is split into two parts:
+
+### `rado_control_3/` - ROS Package (Jetson Orin)
+Copy only this folder to the Orin at `~/ros2_ws/src/rado_control_3/`
+
+Contains:
+- ROS 2 nodes (mission control, state manager, etc.)
+- Launch files
+- Config files (mission_plan.txt)
+
+```bash
+# On Orin
+cd ~/ros2_ws
+colcon build --packages-select rado_control_3
+source install/setup.bash
+```
+
+### `rado_gui/` - Web GUI (Laptop Only)
+Keep this on your laptop only. **Do not copy to Orin.**
+
+Contains:
+- Web interface (HTML/CSS/JS)
+- Python Flask server
+- Startup scripts (SSH to Orin)
+
+```bash
+# On Laptop
+cd rado_gui
+./start_server.sh  # Starts web server + joystick
+# Then run: ./scripts/start_mission.sh
+```
+
+**How they connect:**
+1. Laptop runs the web GUI server (port 8001)
+2. Startup scripts SSH into Orin to launch ROS nodes
+3. Browser connects to rosbridge on Orin (port 9090)
+4. Mission plan is synced from laptop to Orin before mission start
+
+---
+
+## Web GUI & System Control Documentation
 
 ## Initialization Functions
 

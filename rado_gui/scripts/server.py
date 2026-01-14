@@ -22,11 +22,37 @@ Gst.init(None)
 # Directory containing static files (parent of scripts/)
 STATIC_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Mission plan file path
-MISSION_PLAN_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    'config', 'mission_plan.txt'
-)
+# Orin SSH Configuration for remote file access
+ORIN_USER = "kratos"
+ORIN_IP = "192.168.1.10"
+ORIN_PASSWORD = "kratos123"
+ORIN_MISSION_PATH = "~/ros2_ws/src/rado_control_3/config/mission_plan.txt"
+
+def ssh_read_file(remote_path):
+    """Read file content from Orin via SSH."""
+    try:
+        import subprocess
+        cmd = f"sshpass -p '{ORIN_PASSWORD}' ssh {ORIN_USER}@{ORIN_IP} 'cat {remote_path}'"
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=5)
+        if result.returncode == 0:
+            return result.stdout
+        return ""
+    except Exception as e:
+        print(f"SSH read error: {e}")
+        return ""
+
+def ssh_write_file(remote_path, content):
+    """Write content to file on Orin via SSH."""
+    try:
+        import subprocess
+        # Escape content for shell
+        escaped_content = content.replace("'", "'\"'\"'")
+        cmd = f"sshpass -p '{ORIN_PASSWORD}' ssh {ORIN_USER}@{ORIN_IP} 'echo -n \"{escaped_content}\" > {remote_path}'"
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=5)
+        return result.returncode == 0
+    except Exception as e:
+        print(f"SSH write error: {e}")
+        return False
 
 
 class GStreamerVideo:
@@ -189,31 +215,30 @@ def health():
 
 @app.route("/api/mission_plan")
 def get_mission_plan():
-    """Return mission plan data structured for the GUI grid display."""
+    """Return mission plan data structured for the GUI grid display (reads from Orin)."""
     result = {
         'pickup': {'red': [], 'green': [], 'blue': [], 'yellow': []},
         'dropoff': {'red': [], 'green': [], 'blue': [], 'yellow': []}
     }
     
     try:
-        if os.path.exists(MISSION_PLAN_PATH):
-            with open(MISSION_PLAN_PATH, 'r') as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    parts = line.split(',')
-                    if len(parts) >= 4:
-                        try:
-                            obj_type = parts[0].lower().strip()
-                            color = parts[1].lower().strip()
-                            lat = float(parts[2])
-                            lon = float(parts[3])
-                            
-                            if obj_type in result and color in result[obj_type]:
-                                result[obj_type][color].append({'lat': lat, 'lon': lon})
-                        except (ValueError, IndexError):
-                            continue
+        content = ssh_read_file(ORIN_MISSION_PATH)
+        for line in content.split('\n'):
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split(',')
+            if len(parts) >= 4:
+                try:
+                    obj_type = parts[0].lower().strip()
+                    color = parts[1].lower().strip()
+                    lat = float(parts[2])
+                    lon = float(parts[3])
+                    
+                    if obj_type in result and color in result[obj_type]:
+                        result[obj_type][color].append({'lat': lat, 'lon': lon})
+                except (ValueError, IndexError):
+                    continue
     except Exception as e:
         print(f"Error reading mission plan: {e}")
     
@@ -222,11 +247,11 @@ def get_mission_plan():
 
 @app.route("/api/mission_plan/clear", methods=['POST'])
 def clear_mission_plan():
-    """Clear the mission plan file."""
+    """Clear the mission plan file on Orin."""
     try:
-        with open(MISSION_PLAN_PATH, 'w') as f:
-            f.write("")
-        return jsonify({'success': True})
+        if ssh_write_file(ORIN_MISSION_PATH, ""):
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'error': 'SSH write failed'}), 500
     except Exception as e:
         print(f"Error clearing mission plan: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -234,7 +259,7 @@ def clear_mission_plan():
 
 @app.route("/api/mission_plan/update", methods=['POST'])
 def update_mission_plan():
-    """Update coordinates in mission_plan.txt."""
+    """Update coordinates in mission_plan.txt on Orin."""
     try:
         data = request.json
         obj_type = data.get('type', '').lower().strip()
@@ -247,32 +272,30 @@ def update_mission_plan():
         lines = []
         updated = False
         
-        if os.path.exists(MISSION_PLAN_PATH):
-            with open(MISSION_PLAN_PATH, 'r') as f:
-                for line in f:
-                    line_stripped = line.strip()
-                    if not line_stripped:
-                        continue
-                    parts = line_stripped.split(',')
-                    if len(parts) >= 4:
-                        line_type = parts[0].lower().strip()
-                        line_color = parts[1].lower().strip()
-                        line_lat = float(parts[2])
-                        line_lon = float(parts[3])
-                        
-                        # Match by type, color, and approximate coordinates
-                        if (line_type == obj_type and line_color == color and 
-                            abs(line_lat - old_lat) < 0.000001 and 
-                            abs(line_lon - old_lon) < 0.000001):
-                            lines.append(f"{obj_type},{color},{new_lat},{new_lon}\n")
-                            updated = True
-                        else:
-                            lines.append(line_stripped + '\n')
-                    else:
-                        lines.append(line_stripped + '\n')
+        content = ssh_read_file(ORIN_MISSION_PATH)
+        for line in content.split('\n'):
+            line_stripped = line.strip()
+            if not line_stripped:
+                continue
+            parts = line_stripped.split(',')
+            if len(parts) >= 4:
+                line_type = parts[0].lower().strip()
+                line_color = parts[1].lower().strip()
+                line_lat = float(parts[2])
+                line_lon = float(parts[3])
+                
+                # Match by type, color, and approximate coordinates
+                if (line_type == obj_type and line_color == color and 
+                    abs(line_lat - old_lat) < 0.000001 and 
+                    abs(line_lon - old_lon) < 0.000001):
+                    lines.append(f"{obj_type},{color},{new_lat},{new_lon}")
+                    updated = True
+                else:
+                    lines.append(line_stripped)
+            else:
+                lines.append(line_stripped)
         
-        with open(MISSION_PLAN_PATH, 'w') as f:
-            f.writelines(lines)
+        ssh_write_file(ORIN_MISSION_PATH, '\n'.join(lines) + '\n' if lines else '')
         
         return jsonify({'success': updated})
     except Exception as e:
@@ -282,7 +305,7 @@ def update_mission_plan():
 
 @app.route("/api/mission_plan/delete", methods=['POST'])
 def delete_mission_entry():
-    """Delete a specific entry from mission_plan.txt."""
+    """Delete a specific entry from mission_plan.txt on Orin."""
     try:
         data = request.json
         obj_type = data.get('type', '').lower().strip()
@@ -293,32 +316,30 @@ def delete_mission_entry():
         lines = []
         deleted = False
         
-        if os.path.exists(MISSION_PLAN_PATH):
-            with open(MISSION_PLAN_PATH, 'r') as f:
-                for line in f:
-                    line_stripped = line.strip()
-                    if not line_stripped:
-                        continue
-                    parts = line_stripped.split(',')
-                    if len(parts) >= 4:
-                        line_type = parts[0].lower().strip()
-                        line_color = parts[1].lower().strip()
-                        line_lat = float(parts[2])
-                        line_lon = float(parts[3])
-                        
-                        # Skip the matching entry (delete it)
-                        if (line_type == obj_type and line_color == color and 
-                            abs(line_lat - lat) < 0.000001 and 
-                            abs(line_lon - lon) < 0.000001):
-                            deleted = True
-                            continue
-                        else:
-                            lines.append(line_stripped + '\n')
-                    else:
-                        lines.append(line_stripped + '\n')
+        content = ssh_read_file(ORIN_MISSION_PATH)
+        for line in content.split('\n'):
+            line_stripped = line.strip()
+            if not line_stripped:
+                continue
+            parts = line_stripped.split(',')
+            if len(parts) >= 4:
+                line_type = parts[0].lower().strip()
+                line_color = parts[1].lower().strip()
+                line_lat = float(parts[2])
+                line_lon = float(parts[3])
+                
+                # Skip the matching entry (delete it)
+                if (line_type == obj_type and line_color == color and 
+                    abs(line_lat - lat) < 0.000001 and 
+                    abs(line_lon - lon) < 0.000001):
+                    deleted = True
+                    continue
+                else:
+                    lines.append(line_stripped)
+            else:
+                lines.append(line_stripped)
         
-        with open(MISSION_PLAN_PATH, 'w') as f:
-            f.writelines(lines)
+        ssh_write_file(ORIN_MISSION_PATH, '\n'.join(lines) + '\n' if lines else '')
         
         return jsonify({'success': deleted})
     except Exception as e:
@@ -328,20 +349,19 @@ def delete_mission_entry():
 
 @app.route("/api/mission_plan/raw")
 def get_mission_plan_raw():
-    """Return raw mission plan as ordered list for queue display."""
+    """Return raw mission plan as ordered list for queue display (reads from Orin)."""
     result = []
     try:
-        if os.path.exists(MISSION_PLAN_PATH):
-            with open(MISSION_PLAN_PATH, 'r') as f:
-                for idx, line in enumerate(f):
-                    line = line.strip()
-                    if not line:
-                        continue
-                    parts = line.split(',')
-                    if len(parts) >= 4:
-                        try:
-                            result.append({
-                                'index': idx,
+        content = ssh_read_file(ORIN_MISSION_PATH)
+        for idx, line in enumerate(content.split('\n')):
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split(',')
+            if len(parts) >= 4:
+                try:
+                    result.append({
+                        'index': idx,
                                 'type': parts[0].lower().strip(),
                                 'color': parts[1].lower().strip(),
                                 'lat': float(parts[2]),

@@ -1,2 +1,3 @@
 .vscode/
-/rado_control_3/web_gui/data/*
+/rado_gui/data/*
+__pycache__/

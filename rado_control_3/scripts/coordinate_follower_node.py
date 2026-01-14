@@ -73,10 +73,10 @@ class MissionManager(Node):
         self.nav2_timeout = 300.0        # Nav2 navigation timeout (seconds)
         # -------------------------
 
-        # Path Setup
+        # Path Setup - use rado_control_3 directly (Orin structure)
         home = str(Path.home())
         self.mission_file_path = os.path.join(
-            home, 'ros2_ws/src/Main_Control/rado_control_3/config/mission_plan.txt'
+            home, 'ros2_ws/src/rado_control_3/config/mission_plan.txt'
         )
 
         # TF2 Setup

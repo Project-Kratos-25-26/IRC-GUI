@@ -38,13 +38,8 @@ ros2 launch rado_control_3 rado_mission.launch.py
 
 ### Web Interface
 
-Once launched, in the `web_gui` folder:
-
-```bash
-python3 -m http.server 8000
-```
-
-ctrl + click on the hyperlink or paste it in your browser
+The web GUI is in the separate `rado_gui` folder (laptop only).
+See the main README.md for setup instructions.
 
 
 ## Configuration
@@ -76,14 +71,13 @@ Update the `gps_origin_lat` and `gps_origin_lon` parameters to match the GPS coo
     )
 ```
 
-### 2. Update Mission File Path
+### 2. Mission File Path
 **File:** `scripts/coordinate_follower_node.py`
-The node looks for the mission plan in a specific path. Ensure this matches your workspace structure:
-```python
-self.mission_file_path = os.path.join(
-    home, 'ros2_ws/src/Main_Control/rado_control_3/config/mission_plan.txt' # <--- VERIFY PATH
-)
+The node looks for the mission plan at:
 ```
+~/ros2_ws/src/rado_control_3/config/mission_plan.txt
+```
+This expands to `/home/kratos/ros2_ws/src/rado_control_3/config/mission_plan.txt` on Orin.
 
 ### 3. Configure System Monitor IPs
 **File:** `scripts/system_monitor_node.py`

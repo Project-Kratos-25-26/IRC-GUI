@@ -38,10 +38,9 @@ class GuiBackend(Node):
         # 1. Check relative to script (works if symlink-install or running from src)
         relative_path = os.path.abspath(os.path.join(self.script_dir, '../../config/mission_plan.txt'))
         
-        # 2. Check known source location (Hard fix for this workspace structure)
-        # This handles the case where we are running from install/lib but want to write to src/Main_Control
+        # 2. Check known source location on Orin (rado_control_3 directly in ros2_ws/src/)
         home_dir = os.path.expanduser('~')
-        source_path = os.path.join(home_dir, 'ros2_ws/src/Main_Control/rado_control_3/config/mission_plan.txt')
+        source_path = os.path.join(home_dir, 'ros2_ws/src/rado_control_3/config/mission_plan.txt')
         
         if os.path.exists(relative_path):
             self.mission_file = relative_path
