@@ -70,20 +70,13 @@ echo "------------------------------"
 echo " Server running at:"
 echo " http://localhost:8001"
 echo "------------------------------"
-# ---- Background Ping Loop for RASPI and Jetson ----
+# ---- Background Ping Loop for Jetson ----
 echo "[LOCAL] Starting Heartbeat..."
 (
     # IPs loaded from config.sh
 
     
     while true; do
-        # Ping RASPI
-        if ping -c 1 -W 1 $RASPI_IP > /dev/null 2>&1; then
-            RASPI_STATUS="ONLINE"
-        else
-            RASPI_STATUS="OFFLINE"
-        fi
-        
         # Ping Jetson
         if ping -c 1 -W 1 $JETSON_IP > /dev/null 2>&1; then
             JETSON_STATUS="ONLINE"
@@ -92,7 +85,7 @@ echo "[LOCAL] Starting Heartbeat..."
         fi
         
         # Write status as JSON for frontend
-        echo "{\"raspi\": \"$RASPI_STATUS\", \"jetson\": \"$JETSON_STATUS\"}" > "data/ping_status.json"
+        echo "{\"jetson\": \"$JETSON_STATUS\"}" > "data/ping_status.json"
         
         sleep 2
     done

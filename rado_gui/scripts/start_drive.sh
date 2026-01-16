@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # SCRIPT: start_drive.sh
-# PURPOSE: Connects to the Rover (Raspberry Pi), cleans up old mess, and starts
+# PURPOSE: Connects to the Rover (Jetson), cleans up old mess, and starts
 #          the driving software.
 #
 # NOTE TO HUMANS: This script uses SSH to talk to the robot. It uses 'tmux'
@@ -12,34 +12,34 @@
 set -e
 
 # --- CONFIGURATION (Change these if your robot changes name or IP) ---
-RASPI_USER="kratos"      # Username on the Raspberry Pi
-RASPI_IP="192.168.1.16"  # IP Address of the Raspberry Pi
-PASS="kratos123"         # Password for the Pi
-SESSION="rover_ui"       # Name of the tmux session we create on this laptop
+JETSON_USER="kratos"      # Username on the Jetson
+JETSON_IP="192.168.1.10"  # IP Address of the Jetson
+PASS="kratos123"          # Password for the Jetson
+SESSION="rover_ui"        # Name of the tmux session we create on this laptop
 
 # --- COMMAND DEFINITIONS ---
-# 1. KILL COMMAND: Explicitly stops old programs on the Pi
+# 1. KILL COMMAND: Explicitly stops old programs on the Jetson
 #    'pkill -f' finds processes by name and kills them.
 #    We do this to free up the USB port (/dev/ttyUSB0) before starting again.
 CLEANUP_CMD="pkill -f micro_ros_agent; pkill -f drive.py"
 
-# 2. MICRO-ROS COMMAND: Connects the Pi to the Microcontroller (ESP32/Teensy)
+# 2. MICRO-ROS COMMAND: Connects the Jetson to the Microcontroller (ESP32/Teensy)
 #    - ssh -tt: Forces a pseudo-terminal (needed for some interactive programs)
 #    - source ...: Loads ROS2 commands
 #    - ros2 run ...: actually starts the agent
-CMD_MICROROS="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyUSB0'"
+CMD_MICROROS="sshpass -p '$PASS' ssh -tt $JETSON_USER@$JETSON_IP 'source ~/rover/install/setup.bash && ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyUSB0'"
 
 # 3. DRIVE COMMAND: Starts the logic that calculates wheel speeds
 #    - python3 drive.py: The brain that converts joystick inputs to motor commands
-CMD_DRIVE="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && export PYTHONUNBUFFERED=1 && ros2 run drive_controls drive.py'"
+CMD_DRIVE="sshpass -p '$PASS' ssh -tt $JETSON_USER@$JETSON_IP 'source ~/rover/install/setup.bash && export PYTHONUNBUFFERED=1 && ros2 run drive_controls drive.py'"
 
 # ==============================================================================
 # STEP 0: PRE-FLIGHT CLEANUP (THE "DOUBLE TAP")
 # ==============================================================================
-echo "[LOCAL] Cleaning up remote processes on Raspberry Pi..."
+echo "[LOCAL] Cleaning up remote processes on Jetson..."
 # We run the kill command via SSH. 
 # '|| true' means "if you don't find anything to kill, don't crash, just keep going".
-sshpass -p "$PASS" ssh $RASPI_USER@$RASPI_IP "$CLEANUP_CMD" || true
+sshpass -p "$PASS" ssh $JETSON_USER@$JETSON_IP "$CLEANUP_CMD" || true
 echo "[LOCAL] Cleanup complete. Old zombies are dead."
 
 # ==============================================================================
@@ -137,8 +137,8 @@ datadir="$(cd "$(dirname "$0")" && pwd)/../data"
 if ! pgrep -f "ssh.*pgrep.*micro_ros" > /dev/null; then
     echo "[LOCAL] Starting background health monitor..."
     ( while true; do
-      # SSH into Pi and check if 'micro_ros_agent' is in the process list
-      sshpass -p "$PASS" ssh $RASPI_USER@$RASPI_IP \
+      # SSH into Jetson and check if 'micro_ros_agent' is in the process list
+      sshpass -p "$PASS" ssh $JETSON_USER@$JETSON_IP \
         "pgrep -f micro_ros_agent >/dev/null && echo RUNNING || echo STOPPED" \
         > "$datadir/microros.txt"
       sleep 2

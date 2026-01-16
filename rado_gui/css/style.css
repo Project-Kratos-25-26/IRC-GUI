@@ -750,7 +750,7 @@ select {
 }
 
 /* Status Pills */
-#tab-recon #status-raspi-recon,
+
 #tab-recon #status-jetson-recon {
     font-size: 13px;
     font-weight: 600;

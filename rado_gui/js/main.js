@@ -83,13 +83,12 @@ function manageVideoStreams() {
 }
 
 // --- COMMAND SENDERS ---
-let raspiStatus = "OFFLINE";
 let jetsonStatus = "OFFLINE";
 let activeCameras = []; // List of active cameras from Go server (Global)
 
 function sendCmd(cmd) {
-    if ((cmd === 'PROCEED') && raspiStatus !== 'ONLINE') {
-        alert("Cannot Proceed: Raspberry Pi is OFFLINE!");
+    if ((cmd === 'PROCEED') && jetsonStatus !== 'ONLINE') {
+        alert("Cannot Proceed: Jetson is OFFLINE!");
         return;
     }
     // Publish to /sys/command so state_manager receives it
@@ -104,15 +103,15 @@ function sendSysCommand(cmd) {
     // -------------------------------------------------------------------------
     // 1. OFFLINE GUARD
     // -------------------------------------------------------------------------
-    // Define a list of commands that require the Raspberry Pi to be connected.
+    // Define a list of commands that require the Jetson to be connected.
     // These commands involve starting hardware or changing drive modes.
     const blockedCmds = ['init_drive', 'init_ld', 'init_arm', 'manual_mode', 'auto_mode'];
 
-    // Check if the command is in the blocked list AND if the global 'raspiStatus'
+    // Check if the command is in the blocked list AND if the global 'jetsonStatus'
     // (updated by the polling loop) is NOT 'ONLINE'.
-    if (blockedCmds.includes(cmd) && raspiStatus !== 'ONLINE') {
+    if (blockedCmds.includes(cmd) && jetsonStatus !== 'ONLINE') {
         // If offline, block the command and alert the user.
-        alert("Cannot Execute: Raspberry Pi is OFFLINE! Please check connection.");
+        alert("Cannot Execute: Jetson is OFFLINE! Please check connection.");
         return;
     }
 
@@ -531,8 +530,8 @@ function proceedWithQueue() {
         return;
     }
 
-    if (raspiStatus !== 'ONLINE') {
-        alert("Cannot Proceed: Raspberry Pi is OFFLINE!");
+    if (jetsonStatus !== 'ONLINE') {
+        alert("Cannot Proceed: Jetson is OFFLINE!");
         return;
     }
 
@@ -1181,24 +1180,11 @@ window.updateThrustmaster = function (msg) {
 
 
 function pollTelemetry() {
-    // Poll for Ping Status (RASPI and Jetson)
+    // Poll for Ping Status (Jetson)
     fetch('data/ping_status.json?t=' + Date.now())
         .then(r => r.json())
         .then(data => {
-            raspiStatus = data.raspi || 'OFFLINE';
             jetsonStatus = data.jetson || 'OFFLINE';
-
-            // Update RASPI status
-            const raspiRecon = document.getElementById('status-raspi-recon');
-            const raspiMission = document.getElementById('status-raspi-mission');
-            if (raspiRecon) {
-                raspiRecon.textContent = data.raspi || 'OFFLINE';
-                raspiRecon.style.color = data.raspi === 'ONLINE' ? 'lime' : 'red';
-            }
-            if (raspiMission) {
-                raspiMission.textContent = data.raspi || 'OFFLINE';
-                raspiMission.style.color = data.raspi === 'ONLINE' ? 'lime' : 'red';
-            }
 
             // Update Jetson status
             const jetsonRecon = document.getElementById('status-jetson-recon');
@@ -1213,12 +1199,7 @@ function pollTelemetry() {
             }
 
             // Update HEALTH tab
-            const healthRaspi = document.getElementById('health-raspi');
             const healthJetson = document.getElementById('health-jetson');
-            if (healthRaspi) {
-                healthRaspi.textContent = data.raspi || 'OFFLINE';
-                healthRaspi.style.color = data.raspi === 'ONLINE' ? 'lime' : 'red';
-            }
             if (healthJetson) {
                 healthJetson.textContent = data.jetson || 'OFFLINE';
                 healthJetson.style.color = data.jetson === 'ONLINE' ? 'lime' : 'red';
@@ -1226,11 +1207,9 @@ function pollTelemetry() {
         })
 
         .catch(e => {
-            raspiStatus = 'OFFLINE';
             jetsonStatus = 'OFFLINE';
 
             const els = [
-                'status-raspi-recon', 'status-raspi-mission', 'health-raspi',
                 'status-jetson-recon', 'status-jetson-mission', 'health-jetson'
             ];
 

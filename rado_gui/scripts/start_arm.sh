@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -e
 
-RASPI_USER="kratos"
-RASPI_IP="192.168.1.16"
+JETSON_USER="kratos"
+JETSON_IP="192.168.1.10"
 PASS="kratos123"
 SESSION="rover_ui"
 
-CMD_MICROROS="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyUSB1'"
-CMD_ARM="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && export PYTHONUNBUFFERED=1 && ros2 run arm_controls arm_mapping'"
+CMD_MICROROS="sshpass -p '$PASS' ssh -tt $JETSON_USER@$JETSON_IP 'source ~/rover/install/setup.bash && ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyUSB1'"
+CMD_ARM="sshpass -p '$PASS' ssh -tt $JETSON_USER@$JETSON_IP 'source ~/rover/install/setup.bash && export PYTHONUNBUFFERED=1 && ros2 run arm_controls arm_mapping'"
 
 if ! tmux has-session -t $SESSION 2>/dev/null; then
     /usr/bin/env bash $(dirname "$0")/start_drive.sh
