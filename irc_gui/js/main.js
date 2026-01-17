@@ -32,17 +32,17 @@ function retryStream(img) {
     // img.style.opacity = '0.5'; 
 
     setTimeout(() => {
-        const parentTab = img.closest('.tab-pane');
-        // Only reconnect if tab is still active
-        if (parentTab && parentTab.id === currentActiveTab) {
-            // Force URL refresh with timestamp
-            img.src = `${img.dataset.streamPath}?t=${new Date().getTime()}`;
-            img.style.opacity = '1';
-        }
-        img.dataset.isRetrying = 'false';
-    }, 1000); // 1-second retry delay
+        cameraStatus.forEach(cam => {
+            statusMap[cam.name] = cam;
+            // Also support "Cam1", "Cam2" format
+            const camNumMatch = cam.name.match(/\d+/);
+            if (camNumMatch) {
+                statusMap[`Camera ${camNumMatch[0]}`] = cam;
+                statusMap[`Cam${camNumMatch[0]}`] = cam;
+            }
+        });
+    })
 }
-
 function manageVideoStreams() {
     // Find all camera images
     const cams = document.querySelectorAll('img.camera-feed');
@@ -757,14 +757,14 @@ function initCameraSystem() {
 
     // Set specific defaults
     setSelectDefault('cam-recon-1', 'Camera 1');
-    setSelectDefault('cam-recon-2', 'Camera 2');
-    setSelectDefault('cam-recon-3', 'Camera 3');
-    setSelectDefault('cam-recon-4', 'Camera 4');
-    setSelectDefault('cam-recon-zed', 'Camera 5');
-
-    setSelectDefault('cam-arm-1', 'Camera 5');
-    setSelectDefault('cam-arm-2', 'Camera 6');
-    setSelectDefault('cam-arm-3', 'Camera 1');
+    setSelectDefault('cam-recon-1', 'GIMBAL');
+    setSelectDefault('cam-recon-2', 'Camera 1');
+    setSelectDefault('cam-recon-3', 'Camera 2');
+    setSelectDefault('cam-recon-4', 'Camera 3');
+    setSelectDefault('cam-recon-zed', 'ZED');
+    setSelectDefault('cam-arm-1', 'GIMBAL');
+    setSelectDefault('cam-arm-2', 'Camera 4');
+    setSelectDefault('cam-arm-3', 'Camera 5');
 }
 
 function setSelectDefault(imgId, sourceName) {
@@ -801,7 +801,7 @@ setTimeout(() => {
     pollCameraStatus(); // Initial poll to get active status immediately
 }, 500);
 
-const ALL_CAMS = ["Camera 1", "Camera 2", "Camera 3", "Camera 4", "Camera 5", "Camera 6"];
+const ALL_CAMS = ["Camera 1", "Camera 2", "Camera 3", "Camera 4", "Camera 5", "Camera 6", "Camera 7", "Camera 8"];
 
 function pollCameraStatus() {
     Promise.all([
@@ -814,57 +814,138 @@ function pollCameraStatus() {
         // Refresh Video Streams (Dynamic Active/Inactive toggling)
         manageVideoStreams();
 
-        // --- HEALTH UI UPDATE ---
-        try {
-            const camHealth = document.getElementById('health-cameras');
-            if (!camHealth) return; // If not on same page or element missing
+        // --- FETCH CAMERA STATUS FROM JETSON ---
+        fetch('http://192.168.1.10:51000/camera/status')
+            .then(res => res.json())
+            .then(cameraStatus => {
+                // --- HEALTH UI UPDATE ---
+                try {
+                    const camHealth = document.getElementById('health-cameras');
+                    if (!camHealth) return; // If not on same page or element missing
 
-            let html = "<h4 style='margin-bottom:15px; color:#ddd; border-bottom:1px solid #444; padding-bottom:10px;'>Camera System Health</h4>";
+                    // Create a map of devices for quick lookup by various name formats
+                    const statusMap = {};
+                    cameraStatus.forEach(cam => {
+                        statusMap[cam.name] = cam;
+                        // Also support "Cam1", "Cam2" format
+                        const camNumMatch = cam.name.match(/\d+/);
+                        if (camNumMatch) {
+                            statusMap[`Camera ${camNumMatch[0]}`] = cam;
+                            statusMap[`Cam${camNumMatch[0]}`] = cam;
+                        }
+                    });
 
-            const recvStatus = health ? health.status.toUpperCase() : "OFFLINE";
-            const recvColor = recvStatus === 'OK' ? '#2ecc71' : '#e74c3c';
+                    let html = "<h4 style='margin-bottom:15px; color:#ddd; border-bottom:1px solid #444; padding-bottom:10px;'>Camera System Health</h4>";
 
-            html += `
-            <div style="display:flex; gap:20px; margin-bottom:20px;">
-                <div class="card card-compact" style="flex:1; background:#222; border:1px solid #444; padding:15px; text-align:center;">
-                    <div style="font-size:12px; color:#aaa; margin-bottom:5px;">RECEIVER STATUS</div>
-                    <div style="font-size:18px; font-weight:bold; color:${recvColor}">${recvStatus}</div>
-                </div>
-                <div class="card card-compact" style="flex:1; background:#222; border:1px solid #444; padding:15px; text-align:center;">
-                    <div style="font-size:12px; color:#aaa; margin-bottom:5px;">ACTIVE STREAMS</div>
-                    <div style="font-size:18px; font-weight:bold; color:cyan">${activeCameras.length} / 6</div>
-                </div>
-            </div>`;
+                    // Count running cameras
+                    const runningCount = cameraStatus.filter(c => c.running).length;
+                    const availableCount = cameraStatus.length;
 
-            // Camera Grid
-            html += "<div style='display:grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap:10px; margin-top:15px;'>";
+                    html += `
+                    <div style="display:flex; gap:20px; margin-bottom:20px;">
+                        <div class="card card-compact" style="flex:1; background:#222; border:1px solid #444; padding:15px; text-align:center;">
+                            <div style="font-size:12px; color:#aaa; margin-bottom:5px;">AVAILABLE CAMERAS</div>
+                            <div style="font-size:18px; font-weight:bold; color:cyan">${availableCount} / 8</div>
+                        </div>
+                        <div class="card card-compact" style="flex:1; background:#222; border:1px solid #444; padding:15px; text-align:center;">
+                            <div style="font-size:12px; color:#aaa; margin-bottom:5px;">RUNNING STREAMS</div>
+                            <div style="font-size:18px; font-weight:bold; color:#2ecc71">${runningCount} / ${availableCount}</div>
+                        </div>
+                    </div>`;
 
-            ALL_CAMS.forEach(cam => {
-                const isActive = activeCameras.includes(cam);
-                const bgColor = isActive ? 'rgba(46, 204, 113, 0.15)' : 'rgba(231, 76, 60, 0.1)';
-                const borderColor = isActive ? '#27ae60' : '#444';
-                const iconColor = isActive ? '#2ecc71' : '#555';
-                const statusText = isActive ? 'ONLINE' : 'NO SIGNAL';
-                const statusColor = isActive ? '#2ecc71' : '#7f8c8d';
+                    // Camera Grid with 8 cameras
+                    html += "<div style='display:grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap:12px; margin-top:15px;'>";
 
-                html += `
-                <div style="background:${bgColor}; border:1px solid ${borderColor}; border-radius:6px; padding:10px; display:flex; flex-direction:column; align-items:center;">
-                    <div style="margin-bottom:5px; color:${iconColor}; font-size:20px;"><i class="fas fa-video"></i></div>
-                    <div style="font-weight:bold; font-size:14px; margin-bottom:2px;">${cam}</div>
-                    <div style="font-size:10px; letter-spacing:1px; color:${statusColor}">${statusText}</div>
-                </div>`;
+                    for (let i = 1; i <= 8; i++) {
+                        const isSpecial = (i === 7 || i === 8);
+                        const displayName = (i === 7) ? 'GIMBAL' : (i === 8) ? 'ZED' : `Camera ${i}`;
+                        const camData = statusMap[displayName] || statusMap[`Camera ${i}`] || statusMap[`Cam${i}`];
+
+                        let bgColor, borderColor, statusText, statusColor, cursor;
+
+                        if (!camData) {
+                            // Not available
+                            bgColor = 'rgba(100, 100, 100, 0.2)';
+                            borderColor = '#555';
+                            statusText = 'UNAVAILABLE';
+                            statusColor = '#888';
+                            cursor = isSpecial ? 'pointer' : 'not-allowed';
+                        } else if (camData.running) {
+                            // Running (green)
+                            bgColor = 'rgba(46, 204, 113, 0.2)';
+                            borderColor = '#27ae60';
+                            statusText = 'RUNNING';
+                            statusColor = '#2ecc71';
+                            cursor = 'pointer';
+                        } else {
+                            // Available but not running (white)
+                            bgColor = 'rgba(200, 200, 200, 0.1)';
+                            borderColor = '#999';
+                            statusText = 'AVAILABLE';
+                            statusColor = '#ccc';
+                            cursor = 'pointer';
+                        }
+
+                        const isDisabled = (!camData && !isSpecial) ? 'disabled' : '';
+                        const requestedName = camData ? camData.name : displayName; // send 'GIMBAL'/'ZED' for 7/8
+                        const runningFlag = camData ? camData.running : false;
+                        const onClickHandler = `onclick="toggleCamera('${requestedName}', ${runningFlag})"`;
+
+                        html += `
+                        <button ${isDisabled} ${onClickHandler} style="background:${bgColor}; border:2px solid ${borderColor}; border-radius:8px; padding:12px; display:flex; flex-direction:column; align-items:center; cursor:${cursor}; transition:all 0.3s; color:#fff; font-family:monospace; font-size:12px;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                            <div style="margin-bottom:6px; font-size:24px; height:24px;"><i class="fas fa-video"></i></div>
+                            <div style="font-weight:bold; font-size:13px; margin-bottom:3px;">${displayName}</div>
+                            <div style="font-size:11px; letter-spacing:0.5px; color:${statusColor}; font-weight:bold;">${statusText}</div>
+                        </button>`;
+                    }
+
+                    html += "</div>";
+                    html += `<div style="font-size:10px; color:#555; margin-top:15px; text-align:right;">Updated: ${new Date().toLocaleTimeString()}</div>`;
+
+                    camHealth.innerHTML = html;
+                } catch (e) {
+                    console.error("Health UI Crash:", e);
+                }
+            })
+            .catch(err => {
+                console.error('Failed to fetch camera status:', err);
+                // Fallback UI if endpoint fails
+                const camHealth = document.getElementById('health-cameras');
+                if (camHealth) {
+                    camHealth.innerHTML = '<div style="color:#e74c3c; padding:20px; text-align:center;">Unable to fetch camera status from Jetson</div>';
+                }
             });
+        })
+    }; // End Promise.all
 
-            html += "</div>";
-            html += `<div style="font-size:10px; color:#555; margin-top:10px; text-align:right;">Last Updated: ${new Date().toLocaleTimeString()}</div>`;
 
-            camHealth.innerHTML = html;
-        } catch (e) {
-            console.error("Health UI Crash:", e);
-            // Optional: Show error on UI
-            // document.getElementById('health-cameras').innerHTML = `<div style="color:red">UI CRASH: ${e.message}</div>`;
-        }
-    }); // End Promise.all
+// Toggle camera stream on/off
+function toggleCamera(cameraName, isCurrentlyRunning) {
+    const action = isCurrentlyRunning ? 'stop' : 'start';
+    
+    console.log(`${action.toUpperCase()} camera: ${cameraName}`);
+
+    fetch('http://192.168.1.10:51000/camera/' + action, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `name=${encodeURIComponent(cameraName)}`
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.ok) {
+                console.log(`Camera ${action} successful:`, data.message);
+                addMissionLog(`Camera ${cameraName} ${action}ed`);
+                // Refresh camera status immediately
+                setTimeout(pollCameraStatus, 500);
+            } else {
+                alert(`Failed to ${action} camera: ${data.message}`);
+                console.error(`Camera ${action} failed:`, data.message);
+            }
+        })
+        .catch(err => {
+            alert(`Error ${action}ing camera: ${err}`);
+            console.error(`Camera ${action} error:`, err);
+        });
 }
 
 // Poll cameras

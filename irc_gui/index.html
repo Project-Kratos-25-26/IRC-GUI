@@ -185,7 +185,8 @@
                 <div style="display:flex; flex-direction:column; gap:10px; min-height:0;">
                     <!-- CAM GRID (4 Slots) -->
                     <div class="cam-grid">
-                        <div class="cam-slot">
+                        <div class="cam-slot" style="position:relative;">
+                            <div style="position:absolute; top:2px; left:2px; background:rgba(0,0,0,0.7); padding:2px 6px; font-size:10px; border-radius:3px; z-index:10; color:#fff;">GIMBAL</div>
                             <select class="cam-select" onchange="updateCamera('cam-recon-1', this.value)"></select>
                             <img id="cam-recon-1" class="camera-feed" src="" alt="NO SIGNAL">
                         </div>
@@ -207,7 +208,6 @@
                     <div class="card card-compact" style="flex-shrink:0;">
                         <h3>ZED Camera</h3>
                         <div class="cam-slot" style="height: 180px;">
-                            <select class="cam-select" onchange="updateCamera('cam-recon-zed', this.value)"></select>
                             <img id="cam-recon-zed" class="camera-feed" src="" alt="NO SIGNAL">
                         </div>
                     </div>
@@ -501,7 +501,8 @@
                         <select class="cam-select" onchange="updateCamera('cam-arm-1', this.value)"></select>
                         <img id="cam-arm-1" class="camera-feed" src="" alt="NO SIGNAL">
                     </div>
-                    <div class="cam-slot" style="flex:1;">
+                    <div class="cam-slot" style="flex:1; position:relative;">
+                        <div style="position:absolute; top:2px; left:2px; background:rgba(0,0,0,0.7); padding:2px 6px; font-size:10px; border-radius:3px; z-index:10; color:#fff;">GIMBAL</div>
                         <select class="cam-select" onchange="updateCamera('cam-arm-2', this.value)"></select>
                         <img id="cam-arm-2" class="camera-feed" src="" alt="NO SIGNAL">
                     </div>
