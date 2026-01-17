@@ -1,3 +1,5 @@
 .vscode/
 /rado_gui/data/*
 __pycache__/
+*.pyc
+*.log

@@ -1,21 +1,41 @@
 // This module uses CONFIG defined in config.js (loaded first)
 // No duplicate definition needed
 
-// Initialize ROS connection
+// Initialize ROS connection to Jetson (for cameras, GPS, etc)
 const ros = new ROSLIB.Ros({ url: CONFIG.ROSBRIDGE_URL });
 
 ros.on('connection', () => {
-    console.log("ROS Connected");
+    console.log("ROS Connected to Jetson");
 });
 
 ros.on('close', () => {
-    console.log("ROS Disconnected");
+    console.log("ROS Disconnected from Jetson");
+});
+
+// Initialize LOCAL ROS connection for joystick data
+const rosLocal = new ROSLIB.Ros({ url: 'ws://localhost:9090' });
+
+rosLocal.on('connection', () => {
+    console.log("ROS Connected to Local");
+});
+
+rosLocal.on('close', () => {
+    console.log("ROS Disconnected from Local");
 });
 
 // --- HELPER TO CREATE TOPICS ---
 function createTopic(name, type) {
     return new ROSLIB.Topic({
         ros: ros,
+        name: name,
+        messageType: type
+    });
+}
+
+// --- HELPER TO CREATE LOCAL TOPICS (for joysticks) ---
+function createLocalTopic(name, type) {
+    return new ROSLIB.Topic({
+        ros: rosLocal,
         name: name,
         messageType: type
     });
@@ -41,9 +61,9 @@ window.telemetry = {
     local_calc: null
 };
 
-// --- JOYSTICK SUBSCRIBERS (via rosbridge websocket) ---
-// Thrustmaster (for Drive visualization)
-const joySub = createTopic('/joy0', 'sensor_msgs/Joy');
+// --- JOYSTICK SUBSCRIBERS (via LOCAL rosbridge websocket) ---
+// Thrustmaster (for Drive visualization) - Subscribe to LOCAL rosbridge
+const joySub = createLocalTopic('/joy0', 'sensor_msgs/Joy');
 joySub.subscribe((msg) => {
     window.telemetry.joy = msg.axes;
 
@@ -82,8 +102,8 @@ joySub.subscribe((msg) => {
     });
 });
 
-// PS5 Controller (for LD visualization)
-const ps5Sub = createTopic('/joy', 'sensor_msgs/Joy');
+// PS5 Controller (for LD visualization) - Subscribe to LOCAL rosbridge
+const ps5Sub = createLocalTopic('/joy', 'sensor_msgs/Joy');
 ps5Sub.subscribe((msg) => {
     window.telemetry.joy_ps5 = msg;
     requestAnimationFrame(() => {
