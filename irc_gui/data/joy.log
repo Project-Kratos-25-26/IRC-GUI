@@ -1,3 +1,0 @@
-[INFO] [1768640171.401884786] [joy]: Opened joystick: Sony Interactive Entertainment Wireless Controller.  deadzone: 0.050000
-[INFO] [1768640235.692768716] [rclcpp]: signal_handler(signum=2)
-[INFO] [1768640235.742566397] [rclcpp]: signal_handler(signum=15)
