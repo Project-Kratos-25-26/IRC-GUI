@@ -27,8 +27,8 @@ class GuiBackend(Node):
         # install(PROGRAMS scripts/... DESTINATION lib/${PROJECT_NAME})
         # So if we add start_drive.sh etc to that list, they will be in the same dir as this node.
         
-        # For now, keeping the source path as defined in the plan to be safe with the user's workspace structure
-        self.script_dir = os.path.dirname(os.path.abspath(__file__))
+        # Use the web GUI's script directory (contains start_ld.sh, start_arm.sh, etc.)
+        self.script_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../irc_gui/scripts'))
         
         # Subscribe to log requests
         self.log_sub = self.create_subscription(String, '/gui/log_request', self.log_callback, 10)

@@ -43,7 +43,8 @@ function createLocalTopic(name, type) {
 
 // --- DEFINE TOPICS ---
 const cmdPub = createTopic(CONFIG.TOPICS.CMD, 'std_msgs/String');
-const sysPub = createTopic(CONFIG.TOPICS.SYS, 'std_msgs/String');
+// System commands should hit the local ROS graph (backend/state manager runs locally)
+const sysPub = createLocalTopic(CONFIG.TOPICS.SYS, 'std_msgs/String');
 const armPub = createTopic(CONFIG.TOPICS.ARM, 'std_msgs/String');
 const logPub = createTopic(CONFIG.TOPICS.LOG, 'std_msgs/String');
 
