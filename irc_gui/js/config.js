@@ -1,7 +1,7 @@
 // Configuration Constants
 const CONFIG = {
     // ROSBridge WebSocket URL (rosbridge runs on Orin where ROS nodes are)
-    ROSBRIDGE_URL: `ws://192.168.1.10:9090`,
+    ROSBRIDGE_URL: `ws://localhost:9090`,
 
     // Camera Sources Map (6 USB cameras via GStreamer)
     CAMERA_SOURCES: {
@@ -18,6 +18,7 @@ const CONFIG = {
     // Topic Names
     TOPICS: {
         GPS: '/mavros/global_position/global',
+        ODOM: '/zed/zed_node/odom',
         STATE: '/rover_state',
         HEALTH: '/gui/system_health',
         CMD: '/gcs/command',

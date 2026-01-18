@@ -242,22 +242,44 @@ function sendLog() {
     if (!selectedColor) { alert("Select Color First!"); return; }
     const objType = document.getElementById('obj-select').value; // 'pickup' or 'dropoff'
 
-    // Get current GPS
-    const latStr = document.getElementById('recon-lat').textContent;
-    const lonStr = document.getElementById('recon-lon').textContent;
+    // Get current position from odometry display
+    const xStr = document.getElementById('odom-x').textContent;
+    const yStr = document.getElementById('odom-y').textContent;
 
-    // Publish Log Request (Format: Type|Color|Lat|Lon)
-    logPub.publish(new ROSLIB.Message({ data: `${objType}|${selectedColor}|${latStr}|${lonStr}` }));
+    // Send to server API (writes directly to Orin via SSH)
+    fetch('/api/mission_plan/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            type: objType,
+            color: selectedColor,
+            lat: xStr,
+            lon: yStr
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            console.log('Logged to mission plan via SSH');
+        } else {
+            console.error('Failed to log:', data.error);
+            alert('Failed to log: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(e => {
+        console.error('Log request failed:', e);
+        alert('Log request failed: ' + e);
+    });
 
-    const logText = `Logged: ${objType} | Color: ${selectedColor} | Loc: [${latStr}, ${lonStr}]`;
+    const logText = `Logged: ${objType} | Color: ${selectedColor} | Loc: [${xStr}, ${yStr}]`;
     document.getElementById('log-msg').textContent = logText;
     console.log(logText);
 
     // Add visual marker to map
-    const lat = parseFloat(latStr);
-    const lon = parseFloat(lonStr);
-    if (typeof map !== 'undefined' && lat !== 0) {
-        L.marker([lat, lon]).addTo(map).bindPopup(`${objType}: ${selectedColor}`).openPopup();
+    const x = parseFloat(xStr);
+    const y = parseFloat(yStr);
+    if (typeof map !== 'undefined' && x !== 0) {
+        L.marker([x, y]).addTo(map).bindPopup(`${objType}: ${selectedColor}`).openPopup();
     }
 
     // Refresh mission plan display if on mission tab

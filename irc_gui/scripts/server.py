@@ -54,6 +54,19 @@ def ssh_write_file(remote_path, content):
         print(f"SSH write error: {e}")
         return False
 
+def ssh_append_file(remote_path, content):
+    """Append content to file on Orin via SSH."""
+    try:
+        import subprocess
+        # Escape content for shell
+        escaped_content = content.replace("'", "'\"'\"'")
+        cmd = f"sshpass -p '{ORIN_PASSWORD}' ssh {ORIN_USER}@{ORIN_IP} 'echo \"{escaped_content}\" >> {remote_path}'"
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=5)
+        return result.returncode == 0
+    except Exception as e:
+        print(f"SSH append error: {e}")
+        return False
+
 
 class GStreamerVideo:
     """GStreamer pipeline manager for a single camera stream."""
@@ -303,6 +316,31 @@ def clear_mission_plan():
         return jsonify({'success': False, 'error': 'SSH write failed'}), 500
     except Exception as e:
         print(f"Error clearing mission plan: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route("/api/mission_plan/add", methods=['POST'])
+def add_mission_entry():
+    """Add a new entry to mission_plan.txt on Orin."""
+    try:
+        data = request.json
+        obj_type = data.get('type', '').lower().strip()
+        color = data.get('color', '').lower().strip()
+        lat = data.get('lat')
+        lon = data.get('lon')
+        
+        if not all([obj_type, color, lat, lon]):
+            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+        
+        # CSV Format: type,color,lat,lon
+        line = f"{obj_type},{color},{lat},{lon}"
+        
+        if ssh_append_file(ORIN_MISSION_PATH, line):
+            print(f"Added to mission plan: {line}")
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'error': 'SSH append failed'}), 500
+    except Exception as e:
+        print(f"Error adding mission entry: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

@@ -115,6 +115,8 @@ ps5Sub.subscribe((msg) => {
 // --- STATE SUBSCRIBER ---
 const stateSub = createTopic('/system/state', 'std_msgs/String');
 stateSub.subscribe((msg) => {
+        console.log('Received mission status:', msg.data);
+
     const badge = document.getElementById('state-badge');
     if (badge) {
         badge.innerText = msg.data;
@@ -158,16 +160,34 @@ missionStatusSub.subscribe((msg) => {
     }
 });
 
-// --- GPS SUBSCRIBER FOR MAP ---
+// --- ODOMETRY SUBSCRIBER FOR POSITION (Used for logging) ---
+window.currentPosition = { x: 0, y: 0 };
+
+const odomSub = createTopic(CONFIG.TOPICS.ODOM, 'nav_msgs/Odometry');
+odomSub.subscribe((msg) => {
+    // Store current position globally
+    window.currentPosition.x = msg.pose.pose.position.x;
+    window.currentPosition.y = msg.pose.pose.position.y;
+    
+    console.log(`[ODOM] Received data - X: ${window.currentPosition.x.toFixed(3)}, Y: ${window.currentPosition.y.toFixed(3)}`);
+    
+    // Update odometry display
+    const xEl = document.getElementById('odom-x');
+    const yEl = document.getElementById('odom-y');
+    if (xEl) xEl.textContent = window.currentPosition.x.toFixed(3);
+    if (yEl) yEl.textContent = window.currentPosition.y.toFixed(3);
+});
+
+// --- GPS SUBSCRIBER FOR DISPLAY AND MAP ---
 const gpsSub = createTopic('/mavros/global_position/global', 'sensor_msgs/NavSatFix');
 gpsSub.subscribe((msg) => {
     // Update GPS display
-    const latEl = document.getElementById('recon-lat');
-    const lonEl = document.getElementById('recon-lon');
+    const latEl = document.getElementById('gps-lat');
+    const lonEl = document.getElementById('gps-lon');
     if (latEl) latEl.textContent = msg.latitude.toFixed(6);
     if (lonEl) lonEl.textContent = msg.longitude.toFixed(6);
     
-    // Update map marker if available
+    // Update map marker with GPS if available
     if (window.updateRoverMarker) {
         window.updateRoverMarker(msg.latitude, msg.longitude);
     }
