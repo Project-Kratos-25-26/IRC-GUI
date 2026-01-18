@@ -161,14 +161,18 @@ missionStatusSub.subscribe((msg) => {
 // --- GPS SUBSCRIBER FOR MAP ---
 const gpsSub = createTopic('/mavros/global_position/global', 'sensor_msgs/NavSatFix');
 gpsSub.subscribe((msg) => {
-    // Update GPS display
-    const latEl = document.getElementById('recon-lat');
-    const lonEl = document.getElementById('recon-lon');
-    if (latEl) latEl.textContent = msg.latitude.toFixed(6);
-    if (lonEl) lonEl.textContent = msg.longitude.toFixed(6);
-    
     // Update map marker if available
     if (window.updateRoverMarker) {
         window.updateRoverMarker(msg.latitude, msg.longitude);
     }
+});
+
+// --- ODOMETRY SUBSCRIBER FOR MAP FRAME POSITION (x, y) ---
+const odomSub = createTopic(CONFIG.TOPICS.ODOM, 'nav_msgs/Odometry');
+odomSub.subscribe((msg) => {
+    // Update map frame position display
+    const xEl = document.getElementById('recon-x');
+    const yEl = document.getElementById('recon-y');
+    if (xEl) xEl.textContent = msg.pose.pose.position.x.toFixed(2);
+    if (yEl) yEl.textContent = msg.pose.pose.position.y.toFixed(2);
 });

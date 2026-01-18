@@ -326,14 +326,14 @@ def add_mission_entry():
         data = request.json
         obj_type = data.get('type', '').lower().strip()
         color = data.get('color', '').lower().strip()
-        lat = data.get('lat')
-        lon = data.get('lon')
+        x = data.get('x')
+        y = data.get('y')
         
-        if not all([obj_type, color, lat, lon]):
+        if not all([obj_type, color, x, y]):
             return jsonify({'success': False, 'error': 'Missing required fields'}), 400
         
-        # CSV Format: type,color,lat,lon
-        line = f"{obj_type},{color},{lat},{lon}"
+        # CSV Format: type,color,x,y (map frame coordinates)
+        line = f"{obj_type},{color},{x},{y}"
         
         if ssh_append_file(ORIN_MISSION_PATH, line):
             print(f"Added to mission plan: {line}")

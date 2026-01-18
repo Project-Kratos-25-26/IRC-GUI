@@ -16,6 +16,7 @@ const CONFIG = {
     // Topic Names
     TOPICS: {
         GPS: '/mavros/global_position/global',
+        ODOM: '/odom',  // Odometry for map frame x, y
         STATE: '/rover_state',
         HEALTH: '/gui/system_health',
         CMD: '/gcs/command',

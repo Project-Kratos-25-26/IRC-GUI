@@ -242,9 +242,9 @@ function sendLog() {
     if (!selectedColor) { alert("Select Color First!"); return; }
     const objType = document.getElementById('obj-select').value; // 'pickup' or 'dropoff'
 
-    // Get current GPS
-    const latStr = document.getElementById('recon-lat').textContent;
-    const lonStr = document.getElementById('recon-lon').textContent;
+    // Get current map frame position (x, y)
+    const xStr = document.getElementById('recon-x').textContent;
+    const yStr = document.getElementById('recon-y').textContent;
 
     // Send to server API (writes directly to Orin via SSH)
     fetch('/api/mission_plan/add', {
@@ -253,8 +253,8 @@ function sendLog() {
         body: JSON.stringify({
             type: objType,
             color: selectedColor,
-            lat: latStr,
-            lon: lonStr
+            x: xStr,
+            y: yStr
         })
     })
     .then(r => r.json())
@@ -271,16 +271,12 @@ function sendLog() {
         alert('Log request failed: ' + e);
     });
 
-    const logText = `Logged: ${objType} | Color: ${selectedColor} | Loc: [${latStr}, ${lonStr}]`;
+    const logText = `Logged: ${objType} | Color: ${selectedColor} | Pos: [${xStr}, ${yStr}]`;
     document.getElementById('log-msg').textContent = logText;
     console.log(logText);
 
-    // Add visual marker to map
-    const lat = parseFloat(latStr);
-    const lon = parseFloat(lonStr);
-    if (typeof map !== 'undefined' && lat !== 0) {
-        L.marker([lat, lon]).addTo(map).bindPopup(`${objType}: ${selectedColor}`).openPopup();
-    }
+    // Note: Map marker disabled since we're now logging map frame x,y instead of GPS lat/lon
+    // Leaflet map uses GPS coordinates, so markers would need a coordinate transform
 
     // Refresh mission plan display if on mission tab
     setTimeout(refreshMissionPlan, 500);
