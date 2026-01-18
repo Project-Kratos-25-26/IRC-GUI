@@ -1,6 +1,5 @@
 // This module uses CONFIG defined in config.js (loaded first)
 // No duplicate definition needed
-
 // Initialize ROS connection to Jetson (for cameras, GPS, etc)
 const ros = new ROSLIB.Ros({ url: CONFIG.ROSBRIDGE_URL });
 

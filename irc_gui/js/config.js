@@ -23,6 +23,11 @@ const CONFIG = {
         CMD: '/gcs/command',
         SYS: '/sys/command',
         ARM: '/arm/joint_commands',
-        LOG: '/gui/log_request'
+        LOG: '/gui/log_request',
+        SPECTRAL: '/spectral_data', //subject to change
+        ECO2 : '/eCO2_data', 
+        DHT : '/dht_data',
+        NPK : '/npk_data',
+        MULTI : '/gas_data'
     }
 };

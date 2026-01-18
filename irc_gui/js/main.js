@@ -7,7 +7,7 @@ function openTab(id) {
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
     document.getElementById(id).classList.add('active');
 
-    const btnIndex = ['tab-setup', 'tab-health', 'tab-recon', 'tab-mission', 'tab-arm'].indexOf(id);
+    const btnIndex = ['tab-setup', 'tab-health', 'tab-recon', 'tab-mission', 'tab-arm','tab-ld'].indexOf(id);
     if (btnIndex >= 0) document.querySelectorAll('.tab-btn')[btnIndex].classList.add('active');
 
     if (id === 'tab-mission' && typeof map !== 'undefined') {
