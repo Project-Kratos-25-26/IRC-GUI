@@ -10,7 +10,9 @@ const CONFIG = {
         "Camera 3": { type: "receiver", id: "Camera 3" },
         "Camera 4": { type: "receiver", id: "Camera 4" },
         "Camera 5": { type: "receiver", id: "Camera 5" },
-        "Camera 6": { type: "receiver", id: "Camera 6" }
+        "Camera 6": { type: "receiver", id: "Camera 6" },
+        "GIMBAL": { type: "gimbal", id: "GIMBAL" },
+        "ZED": { type: "zed", id: "ZED" }
     },
 
     // Topic Names
