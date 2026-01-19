@@ -257,19 +257,19 @@ function sendLog() {
             lon: yStr
         })
     })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            console.log('Logged to mission plan via SSH');
-        } else {
-            console.error('Failed to log:', data.error);
-            alert('Failed to log: ' + (data.error || 'Unknown error'));
-        }
-    })
-    .catch(e => {
-        console.error('Log request failed:', e);
-        alert('Log request failed: ' + e);
-    });
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                console.log('Logged to mission plan via SSH');
+            } else {
+                console.error('Failed to log:', data.error);
+                alert('Failed to log: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(e => {
+            console.error('Log request failed:', e);
+            alert('Log request failed: ' + e);
+        });
 
     const logText = `Logged: ${objType} | Color: ${selectedColor} | Loc: [${xStr}, ${yStr}]`;
     document.getElementById('log-msg').textContent = logText;
@@ -937,14 +937,14 @@ function pollCameraStatus() {
                     camHealth.innerHTML = '<div style="color:#e74c3c; padding:20px; text-align:center;">Unable to fetch camera status from Jetson</div>';
                 }
             });
-        })
-    }; // End Promise.all
+    })
+}; // End Promise.all
 
 
 // Toggle camera stream on/off
 function toggleCamera(cameraName, isCurrentlyRunning) {
     const action = isCurrentlyRunning ? 'stop' : 'start';
-    
+
     console.log(`${action.toUpperCase()} camera: ${cameraName}`);
 
     fetch('http://192.168.1.10:51000/camera/' + action, {
@@ -1465,7 +1465,7 @@ function pollMissionStatus() {
 setInterval(pollMissionStatus, 2000);
 
 // --- UI SOUND EFFECTS ---
-const fahAudio = new Audio('https://cdn.jsdelivr.net/gh/0bx0/Fah-/Fahh%20Sound%20Effect.mp3');
+const fahAudio = new Audio('data/ui_click.mp3');
 let soundEnabled = localStorage.getItem('soundEnabled') !== 'false'; // Default true (strings 'true' or null -> true)
 
 function toggleSound(enabled) {
