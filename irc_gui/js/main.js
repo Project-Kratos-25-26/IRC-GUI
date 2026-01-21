@@ -594,7 +594,7 @@ function sendCurrentGoal() {
     showMissionStatus(`Navigating to #${currentMissionIndex + 1}: ${goal.type} ${goal.color}`);
 
     // Publish goal to ROS
-    const goalData = `QUEUE|${currentMissionIndex}|${goal.type}|${goal.color}|${goal.lat}|${goal.lon}`;
+    const goalData = `GOAL|${goal.type}|${goal.color}|${goal.lat}|${goal.lon}`;
 
     const goalPub = new ROSLIB.Topic({
         ros: ros,
