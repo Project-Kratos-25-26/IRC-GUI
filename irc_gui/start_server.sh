@@ -55,7 +55,7 @@ python3 ../scripts/state_manager_node.py > "data/state_manager.log" 2>&1 &
 
 # 2.2 Start Rosbridge (Essential for Web Communication)
 echo "[LOCAL] Starting Rosbridge..."
-ros2 launch rosbridge_server rosbridge_websocket_launch.xml > "data/rosbridge.log" 2>&1 &
+ros2 launch rosbridge_server rosbridge_websocket_launch.xml port:=9099 > "data/rosbridge.log" 2>&1 &
 
 # 2.3 Initialize NVGPU on Jetson
 echo "[LOCAL] Initializing NVGPU on Jetson..."

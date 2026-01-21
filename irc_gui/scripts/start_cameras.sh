@@ -17,9 +17,6 @@ if ! ping -c 1 -W 2 $JETSON_IP > /dev/null 2>&1; then
     exit 0
 fi
 
-# 1. Cleanup old process on Jetson
-echo "[CAMERAS] Killing old camera processes on Jetson..."
-sshpass -p "$JETSON_PASSWORD" ssh -tt $JETSON_USER@$JETSON_IP "pkill -f 'go run main.go' || true" 2>/dev/null
 
 # 2. Start Go Server in Tmux
 echo "[CAMERAS] Starting Go camera server in Tmux session 'camera_sys'..."
@@ -31,7 +28,7 @@ sshpass -p "$JETSON_PASSWORD" ssh -tt $JETSON_USER@$JETSON_IP "tmux kill-session
 sshpass -p "$JETSON_PASSWORD" ssh -tt $JETSON_USER@$JETSON_IP "tmux new-session -d -s $SESSION_NAME"
 
 # Send command to tmux session
-sshpass -p "$JETSON_PASSWORD" ssh -tt $JETSON_USER@$JETSON_IP "tmux send-keys -t $SESSION_NAME 'source ~/.bashrc && cd $GO_DIR && go run main.go' C-m"
+sshpass -p "$JETSON_PASSWORD" ssh -tt $JETSON_USER@$JETSON_IP "tmux send-keys -t $SESSION_NAME 'source ~/.bashrc && cd $GO_DIR && go run .' C-m"
 
 # 3. Wait for Server to Start
 echo "[CAMERAS] Waiting 5s for server to initialize..."

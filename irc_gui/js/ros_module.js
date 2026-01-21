@@ -13,7 +13,7 @@ ros.on('close', () => {
 });
 
 // Initialize LOCAL ROS connection for joystick data
-const rosLocal = new ROSLIB.Ros({ url: 'ws://localhost:9090' });
+const rosLocal = new ROSLIB.Ros({ url: 'ws://localhost:9099' });
 
 rosLocal.on('connection', () => {
     console.log("ROS Connected to Local");
@@ -115,7 +115,7 @@ ps5Sub.subscribe((msg) => {
 // --- STATE SUBSCRIBER ---
 const stateSub = createTopic('/system/state', 'std_msgs/String');
 stateSub.subscribe((msg) => {
-        console.log('Received mission status:', msg.data);
+    console.log('Received mission status:', msg.data);
 
     const badge = document.getElementById('state-badge');
     if (badge) {
@@ -142,11 +142,11 @@ missionStatusSub.subscribe((msg) => {
         const parts = msg.data.split('|');
         const statusType = parts[0];
         const queueIndex = parseInt(parts[1]);
-        
+
         if (statusType === 'ARRIVED') {
             const goalType = parts[2];
             console.log(`Mission status: Arrived at ${goalType} (queue index: ${queueIndex})`);
-            
+
             // Call the handler in main.js
             if (window.onWaypointReached) {
                 window.onWaypointReached(queueIndex, goalType);
@@ -168,9 +168,9 @@ odomSub.subscribe((msg) => {
     // Store current position globally
     window.currentPosition.x = msg.pose.pose.position.x;
     window.currentPosition.y = msg.pose.pose.position.y;
-    
+
     console.log(`[ODOM] Received data - X: ${window.currentPosition.x.toFixed(3)}, Y: ${window.currentPosition.y.toFixed(3)}`);
-    
+
     // Update odometry display
     const xEl = document.getElementById('odom-x');
     const yEl = document.getElementById('odom-y');
@@ -186,7 +186,7 @@ gpsSub.subscribe((msg) => {
     const lonEl = document.getElementById('gps-lon');
     if (latEl) latEl.textContent = msg.latitude.toFixed(6);
     if (lonEl) lonEl.textContent = msg.longitude.toFixed(6);
-    
+
     // Update map marker with GPS if available
     if (window.updateRoverMarker) {
         window.updateRoverMarker(msg.latitude, msg.longitude);

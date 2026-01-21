@@ -13,21 +13,6 @@ class GuiBackend(Node):
         # Subscribe to system commands from the Web GUI
         self.sys_sub = self.create_subscription(String, '/sys/command', self.command_callback, 10)
         
-        # Point to the current scripts directory
-        # Since this node is installed to lib/pkg/node.py, we need to find the share/pkg/scripts or similar if installed.
-        # However, scripts/ is source. To work in both dev and install, usually we install scripts to lib/pkg/scripts too.
-        # Our CMakeLists installs scripts to lib/project_name/
-        # So we can look in the same directory as this file.
-        
-        # self.script_dir = os.path.dirname(os.path.abspath(__file__))
-        # Update: We decided to point to the source path for now to satisfy "verify functionality without changing files" initially,
-        # but now we are migrating. Let's assume standard ROS usage:
-        # We installed the scripts to lib/${PROJECT_NAME} in CMakeLists already (via PROGRAMS)
-        # Wait, CMakeLists listed:
-        # install(PROGRAMS scripts/... DESTINATION lib/${PROJECT_NAME})
-        # So if we add start_drive.sh etc to that list, they will be in the same dir as this node.
-        
-        # Use the web GUI's script directory (contains start_ld.sh, start_arm.sh, etc.)
         self.script_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../irc_gui/scripts'))
         
         # Subscribe to log requests

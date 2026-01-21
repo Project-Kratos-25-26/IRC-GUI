@@ -198,61 +198,19 @@ function sendSysCommand(cmd) {
     }
 
     // -------------------------------------------------------------------------
-    // 4. MODE SWITCHING (Local API - switch_mode.sh)
+    // 4. MODE SWITCHING (via ROS -> gui_backend_node.py -> switch_mode.sh)
     // -------------------------------------------------------------------------
-    if (cmd === 'manual_mode') {
-        console.log(`[DEBUG] manual_mode called - running switch_mode.sh via local API`);
-
-        fetch('/api/run_script', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ script: 'switch_mode.sh', args: ['thrustmaster'] })
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    console.log('Switched to manual mode:', data.message);
-                    updateMode('MANUAL');
-                } else {
-                    console.error('Switch mode failed:', data.error);
-                    alert('Failed to switch mode: ' + data.error);
-                }
-            })
-            .catch(err => {
-                console.error('Error switching mode:', err);
-                alert('Error switching mode: ' + err);
-            });
-
-        // Also publish to ROS for state_manager
+    // Mode commands are handled by gui_backend_node.py which listens on /sys/command
+    // and executes switch_mode.sh with the appropriate argument
+    if (cmd === 'manual_mode' || cmd === 'auto_mode') {
+        console.log(`[DEBUG] ${cmd} called - sending to gui_backend via ROS`);
         sysPub.publish(new ROSLIB.Message({ data: cmd }));
-        return;
-    }
 
-    if (cmd === 'auto_mode') {
-        console.log(`[DEBUG] auto_mode called - running switch_mode.sh via local API`);
+        // Optimistic UI update
+        if (cmd === 'manual_mode') updateMode('MANUAL');
+        if (cmd === 'auto_mode') updateMode('AUTO');
 
-        fetch('/api/run_script', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ script: 'switch_mode.sh', args: ['keyboard'] })
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    console.log('Switched to auto mode:', data.message);
-                    updateMode('AUTO');
-                } else {
-                    console.error('Switch mode failed:', data.error);
-                    alert('Failed to switch mode: ' + data.error);
-                }
-            })
-            .catch(err => {
-                console.error('Error switching mode:', err);
-                alert('Error switching mode: ' + err);
-            });
-
-        // Also publish to ROS for state_manager
-        sysPub.publish(new ROSLIB.Message({ data: cmd }));
+        console.log(`Mode command sent to ROS: ${cmd}`);
         return;
     }
 
