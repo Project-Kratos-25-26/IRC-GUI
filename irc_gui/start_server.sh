@@ -68,7 +68,7 @@ bash scripts/start_cameras.sh > "data/start_cameras.log" 2>&1 &
 # 3. Start Server
 echo "------------------------------"
 echo " Server running at:"
-echo " http://localhost:8001"
+echo " http://localhost:8080"
 echo "------------------------------"
 # ---- Background Ping Loop for RASPI and Jetson ----
 echo "[LOCAL] Starting Heartbeat..."

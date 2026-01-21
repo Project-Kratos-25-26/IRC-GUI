@@ -506,8 +506,8 @@ if __name__ == "__main__":
     try:
         init_all_cameras()
         print(f"Serving from: {STATIC_DIR}")
-        print("Server starting on http://0.0.0.0:8001")
-        app.run(host="0.0.0.0", port=8001, debug=False, threaded=True)
+        print("Server starting on http://0.0.0.0:8080")
+        app.run(host="0.0.0.0", port=8080, debug=False, threaded=True)
     finally:
         print("Shutting down...")
         for camera in camera_instances.values():
