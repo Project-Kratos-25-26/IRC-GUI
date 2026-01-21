@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>RADO - Camera Feeds</title>
+    <script src="js/vendor/roslib.min.js"></script>
+    <link rel="stylesheet" href="css/vendor/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #111;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #0f3460;
+        }
+
+        .brand {
+            font-size: 18px;
+            font-weight: bold;
+            color: cyan;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .layout-btn {
+            background: #333;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .layout-btn:hover {
+            background: #444;
+        }
+
+        .layout-btn.active {
+            background: #0f3460;
+            border-color: cyan;
+        }
+
+        .main-container {
+            height: calc(100vh - 50px);
+            padding: 10px;
+            overflow: auto;
+        }
+
+        .camera-grid {
+            display: grid;
+            gap: 10px;
+            height: 100%;
+        }
+
+        .camera-grid.layout-2x3 {
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+        }
+
+        .camera-grid.layout-3x3 {
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+        }
+
+        .camera-grid.layout-2x2 {
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+        }
+
+        .camera-grid.layout-1x1 {
+            grid-template-columns: 1fr;
+            grid-template-rows: 1fr;
+        }
+
+        .cam-slot {
+            background: #1a1a2e;
+            border: 2px solid #333;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .cam-slot:hover {
+            border-color: #0f3460;
+        }
+
+        .cam-slot.fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1000;
+            border-radius: 0;
+        }
+
+        .cam-label {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 3px 10px;
+            font-size: 11px;
+            border-radius: 4px;
+            z-index: 10;
+            color: cyan;
+            font-weight: bold;
+        }
+
+        .cam-select {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #555;
+            color: #fff;
+            padding: 3px 8px;
+            font-size: 11px;
+            border-radius: 4px;
+            z-index: 10;
+            cursor: pointer;
+        }
+
+        .cam-select:focus {
+            outline: none;
+            border-color: cyan;
+        }
+
+        .camera-feed {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+        }
+
+        .cam-expand-btn {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #555;
+            color: #fff;
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            cursor: pointer;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .cam-expand-btn:hover {
+            background: #0f3460;
+            border-color: cyan;
+        }
+
+        .status-indicator {
+            position: absolute;
+            bottom: 5px;
+            left: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            z-index: 10;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #555;
+        }
+
+        .status-dot.active {
+            background: #2ecc71;
+            box-shadow: 0 0 5px #2ecc71;
+        }
+
+        .no-signal {
+            color: #555;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="brand"><i class="fas fa-video"></i> CAMERA FEEDS</div>
+        <div class="controls">
+            <button class="layout-btn" onclick="setLayout('2x3')" id="btn-2x3">2×3</button>
+            <button class="layout-btn active" onclick="setLayout('3x3')" id="btn-3x3">3×3</button>
+            <button class="layout-btn" onclick="setLayout('2x2')" id="btn-2x2">2×2</button>
+            <button class="layout-btn" onclick="setLayout('1x1')" id="btn-1x1">1×1</button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div id="camera-grid" class="camera-grid layout-3x3">
+            <!-- Cameras will be dynamically generated -->
+        </div>
+    </div>
+
+    <script src="js/config.js?v=10013"></script>
+    <script>
+        // Camera configuration - matches main window
+        const CAMERA_SLOTS = [
+            { id: 'popup-cam-1', label: 'CAM 1', defaultSource: 'GIMBAL' },
+            { id: 'popup-cam-2', label: 'CAM 2', defaultSource: 'Camera 1' },
+            { id: 'popup-cam-3', label: 'CAM 3', defaultSource: 'Camera 2' },
+            { id: 'popup-cam-4', label: 'CAM 4', defaultSource: 'Camera 3' },
+            { id: 'popup-cam-5', label: 'CAM 5', defaultSource: 'Camera 4' },
+            { id: 'popup-cam-6', label: 'CAM 6', defaultSource: 'Camera 5' },
+            { id: 'popup-cam-7', label: 'ZED', defaultSource: 'ZED' },
+            { id: 'popup-cam-8', label: 'CAM 8', defaultSource: 'Camera 6' },
+            { id: 'popup-cam-9', label: 'CAM 9', defaultSource: null }
+        ];
+
+        let activeCameras = [];
+        let currentLayout = '3x3';
+
+        // Initialize camera grid
+        function initCameraGrid() {
+            const grid = document.getElementById('camera-grid');
+            const sources = Object.keys(CONFIG.CAMERA_SOURCES);
+
+            let html = '';
+            CAMERA_SLOTS.forEach(slot => {
+                html += `
+                    <div class="cam-slot" id="slot-${slot.id}">
+                        <div class="cam-label">${slot.label}</div>
+                        <select class="cam-select" onchange="updateCamera('${slot.id}', this.value)">
+                            <option value="">-- OFF --</option>
+                            ${sources.map(src => `<option value="${src}" ${src === slot.defaultSource ? 'selected' : ''}>${src}</option>`).join('')}
+                        </select>
+                        <img id="${slot.id}" class="camera-feed" src="" alt="NO SIGNAL">
+                        <div class="status-indicator">
+                            <div class="status-dot" id="status-${slot.id}"></div>
+                            <span id="status-text-${slot.id}">Offline</span>
+                        </div>
+                        <button class="cam-expand-btn" onclick="toggleFullscreen('slot-${slot.id}')" title="Expand">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                    </div>
+                `;
+            });
+
+            grid.innerHTML = html;
+
+            // Initialize default sources
+            CAMERA_SLOTS.forEach(slot => {
+                if (slot.defaultSource) {
+                    updateCamera(slot.id, slot.defaultSource);
+                }
+            });
+        }
+
+        // Update camera source
+        function updateCamera(imgId, sourceKey) {
+            const img = document.getElementById(imgId);
+            if (!img) return;
+
+            if (!sourceKey) {
+                // Turn off camera
+                img.removeAttribute('src');
+                img.dataset.streamPath = '';
+                img.dataset.cameraName = '';
+                updateStatusIndicator(imgId, false);
+                return;
+            }
+
+            const source = CONFIG.CAMERA_SOURCES[sourceKey];
+            if (!source) return;
+
+            const streamPath = `/video_feed/${source.id}`;
+            img.dataset.streamPath = streamPath;
+            img.dataset.cameraName = sourceKey;
+
+            // Start stream if camera is active
+            if (activeCameras.includes(sourceKey)) {
+                img.src = streamPath;
+                updateStatusIndicator(imgId, true);
+            } else {
+                img.removeAttribute('src');
+                updateStatusIndicator(imgId, false);
+            }
+
+            // Attach error handler
+            img.onerror = function() {
+                console.warn(`[Popup] Stream error for ${sourceKey}`);
+                updateStatusIndicator(imgId, false);
+            };
+        }
+
+        // Update status indicator
+        function updateStatusIndicator(imgId, isActive) {
+            const dot = document.getElementById(`status-${imgId}`);
+            const text = document.getElementById(`status-text-${imgId}`);
+            if (dot) {
+                dot.classList.toggle('active', isActive);
+            }
+            if (text) {
+                text.textContent = isActive ? 'Live' : 'Offline';
+            }
+        }
+
+        // Manage video streams based on active cameras
+        function manageVideoStreams() {
+            CAMERA_SLOTS.forEach(slot => {
+                const img = document.getElementById(slot.id);
+                if (!img || !img.dataset.cameraName) return;
+
+                const camName = img.dataset.cameraName;
+                const streamPath = img.dataset.streamPath;
+
+                if (activeCameras.includes(camName) && streamPath) {
+                    if (!img.src || !img.src.includes(streamPath)) {
+                        img.src = streamPath;
+                    }
+                    updateStatusIndicator(slot.id, true);
+                } else {
+                    img.removeAttribute('src');
+                    updateStatusIndicator(slot.id, false);
+                }
+            });
+        }
+
+        // Poll camera status
+        function pollCameraStatus() {
+            fetch('/active_cameras')
+                .then(r => r.json())
+                .then(activeCams => {
+                    activeCameras = activeCams || [];
+                    manageVideoStreams();
+                })
+                .catch(err => {
+                    console.error('Failed to fetch active cameras:', err);
+                });
+        }
+
+        // Set grid layout
+        function setLayout(layout) {
+            currentLayout = layout;
+            const grid = document.getElementById('camera-grid');
+
+            // Remove all layout classes
+            grid.className = 'camera-grid';
+            grid.classList.add(`layout-${layout}`);
+
+            // Update button states
+            document.querySelectorAll('.layout-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(`btn-${layout}`).classList.add('active');
+
+            // Show/hide camera slots based on layout
+            const maxVisible = {
+                '1x1': 1,
+                '2x2': 4,
+                '2x3': 6,
+                '3x3': 9
+            };
+
+            CAMERA_SLOTS.forEach((slot, idx) => {
+                const slotEl = document.getElementById(`slot-${slot.id}`);
+                if (slotEl) {
+                    slotEl.classList.toggle('hidden', idx >= maxVisible[layout]);
+                }
+            });
+        }
+
+        // Toggle fullscreen for a camera
+        function toggleFullscreen(slotId) {
+            const slot = document.getElementById(slotId);
+            if (!slot) return;
+
+            if (slot.classList.contains('fullscreen')) {
+                slot.classList.remove('fullscreen');
+            } else {
+                // Remove fullscreen from others
+                document.querySelectorAll('.cam-slot.fullscreen').forEach(el => {
+                    el.classList.remove('fullscreen');
+                });
+                slot.classList.add('fullscreen');
+            }
+        }
+
+        // Close fullscreen on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.cam-slot.fullscreen').forEach(el => {
+                    el.classList.remove('fullscreen');
+                });
+            }
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initCameraGrid();
+            pollCameraStatus();
+            setInterval(pollCameraStatus, 2000);
+        });
+    </script>
+</body>
+
+</html>

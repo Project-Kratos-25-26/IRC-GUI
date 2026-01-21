@@ -762,6 +762,41 @@ function sendArmPreset(pose) {
     armPub.publish(new ROSLIB.Message({ data: `PRESET:${pose}` }));
 }
 
+// --- CAMERA POPUP WINDOW ---
+let cameraPopupWindow = null;
+
+function openCameraPopup() {
+    // Check if popup exists and is still open
+    if (cameraPopupWindow && !cameraPopupWindow.closed) {
+        // Focus existing window
+        cameraPopupWindow.focus();
+        return;
+    }
+
+    // Calculate window size (80% of screen)
+    const width = Math.round(window.screen.width * 0.8);
+    const height = Math.round(window.screen.height * 0.8);
+    const left = Math.round((window.screen.width - width) / 2);
+    const top = Math.round((window.screen.height - height) / 2);
+
+    // Open new popup window
+    cameraPopupWindow = window.open(
+        'camera_popup.html',
+        'CameraFeeds',
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=no,menubar=no,toolbar=no,status=no`
+    );
+
+    if (cameraPopupWindow) {
+        console.log('[Camera Popup] Opened camera popup window');
+        addMissionLog('Opened camera popup window');
+    } else {
+        alert('Popup blocked! Please allow popups for this site.');
+    }
+}
+
+// Expose globally
+window.openCameraPopup = openCameraPopup;
+
 // --- CAMERA LOGIC ---
 function initCameraSystem() {
     const selects = document.querySelectorAll('.cam-select');

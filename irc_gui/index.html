@@ -50,6 +50,9 @@
     <div class="header">
         <div class="brand"><i class="fas fa-robot"></i> RADO CONTROL</div>
         <div class="header-right">
+            <button class="btn-popup" onclick="openCameraPopup()" title="Open cameras in new window">
+                <i class="fas fa-external-link-alt"></i> POP OUT CAMS
+            </button>
             <div id="state-badge" class="status-badge IDLE">IDLE</div>
         </div>
     </div>
@@ -183,32 +186,19 @@
             <div class="grid-2">
                 <!-- LEFT COLUMN -->
                 <div style="display:flex; flex-direction:column; gap:10px; min-height:0;">
-                    <!-- CAM GRID (4 Slots) -->
-                    <div class="cam-grid">
-                        <div class="cam-slot" style="position:relative;">
-                            <div style="position:absolute; top:2px; left:2px; background:rgba(0,0,0,0.7); padding:2px 6px; font-size:10px; border-radius:3px; z-index:10; color:#fff;">GIMBAL</div>
-                            <select class="cam-select" onchange="updateCamera('cam-recon-1', this.value)"></select>
-                            <img id="cam-recon-1" class="camera-feed" src="" alt="NO SIGNAL">
-                        </div>
-                        <div class="cam-slot">
-                            <select class="cam-select" onchange="updateCamera('cam-recon-2', this.value)"></select>
-                            <img id="cam-recon-2" class="camera-feed" src="" alt="NO SIGNAL">
-                        </div>
-                        <div class="cam-slot">
-                            <select class="cam-select" onchange="updateCamera('cam-recon-3', this.value)"></select>
-                            <img id="cam-recon-3" class="camera-feed" src="" alt="NO SIGNAL">
-                        </div>
-                        <div class="cam-slot">
-                            <select class="cam-select" onchange="updateCamera('cam-recon-4', this.value)"></select>
-                            <img id="cam-recon-4" class="camera-feed" src="" alt="NO SIGNAL">
-                        </div>
-                    </div>
-
-                    <!-- ZED SECTION -->
-                    <div class="card card-compact" style="flex-shrink:0;">
-                        <h3>ZED Camera</h3>
-                        <div class="cam-slot" style="height: 180px;">
-                            <img id="cam-recon-zed" class="camera-feed" src="" alt="NO SIGNAL">
+                    <!-- CAMERA POPUP BUTTON (Replaces embedded streams) -->
+                    <div class="card"
+                        style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border: 2px solid #0f3460;">
+                        <div style="text-align:center;">
+                            <i class="fas fa-video"
+                                style="font-size: 64px; color: cyan; margin-bottom: 20px; display: block;"></i>
+                            <h2 style="color: #fff; margin-bottom: 10px; font-size: 24px;">Camera Feeds</h2>
+                            <p style="color: #888; margin-bottom: 25px; font-size: 14px;">Open cameras in a separate
+                                window for better viewing</p>
+                            <button class="btn-popup" onclick="openCameraPopup()"
+                                style="padding: 15px 40px; font-size: 16px; margin: 0 auto;">
+                                <i class="fas fa-external-link-alt"></i> OPEN CAMERA WINDOW
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -509,7 +499,9 @@
                         <img id="cam-arm-1" class="camera-feed" src="" alt="NO SIGNAL">
                     </div>
                     <div class="cam-slot" style="flex:1; position:relative;">
-                        <div style="position:absolute; top:2px; left:2px; background:rgba(0,0,0,0.7); padding:2px 6px; font-size:10px; border-radius:3px; z-index:10; color:#fff;">GIMBAL</div>
+                        <div
+                            style="position:absolute; top:2px; left:2px; background:rgba(0,0,0,0.7); padding:2px 6px; font-size:10px; border-radius:3px; z-index:10; color:#fff;">
+                            GIMBAL</div>
                         <select class="cam-select" onchange="updateCamera('cam-arm-2', this.value)"></select>
                         <img id="cam-arm-2" class="camera-feed" src="" alt="NO SIGNAL">
                     </div>
