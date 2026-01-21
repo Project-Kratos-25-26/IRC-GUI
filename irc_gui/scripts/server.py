@@ -235,7 +235,7 @@ def run_script():
         script_name = data.get('script', '')
         
         # Only allow specific scripts for security
-        allowed_scripts = ['start_mission.sh', 'start_drive.sh', 'start_arm.sh', 'start_ld.sh', 'start_cameras.sh', 'stop_mission.sh']
+        allowed_scripts = ['start_mission.sh', 'start_drive.sh', 'start_arm.sh', 'start_ld.sh', 'start_cameras.sh', 'stop_mission.sh', 'switch_mode.sh']
         
         if script_name not in allowed_scripts:
             return jsonify({'success': False, 'error': f'Script not allowed: {script_name}'}), 403

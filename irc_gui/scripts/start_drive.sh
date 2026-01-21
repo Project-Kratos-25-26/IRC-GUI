@@ -1,14 +1,5 @@
 #!/usr/bin/env bash
-# ==============================================================================
-# SCRIPT: start_drive.sh
-# PURPOSE: Connects to the Rover (Raspberry Pi), cleans up old mess, and starts
-#          the driving software.
-#
-# NOTE TO HUMANS: This script uses SSH to talk to the robot. It uses 'tmux'
-#                 (a terminal multiplexer) to keep things running in the background.
-# ==============================================================================
 
-# Stop immediately if any command fails (safety first!)
 set -e
 
 # --- CONFIGURATION (Change these if your robot changes name or IP) ---
@@ -27,11 +18,11 @@ CLEANUP_CMD="pkill -f micro_ros_agent; pkill -f drive.py"
 #    - ssh -tt: Forces a pseudo-terminal (needed for some interactive programs)
 #    - source ...: Loads ROS2 commands
 #    - ros2 run ...: actually starts the agent
-CMD_MICROROS="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyUSB0'"
+CMD_MICROROS="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyUSB0; exec bash'"
 
 # 3. DRIVE COMMAND: Starts the logic that calculates wheel speeds
 #    - python3 drive.py: The brain that converts joystick inputs to motor commands
-CMD_DRIVE="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && export PYTHONUNBUFFERED=1 && ros2 run drive_controls drive.py'"
+CMD_DRIVE="sshpass -p '$PASS' ssh -tt $RASPI_USER@$RASPI_IP 'source ~/rover/install/setup.bash && export PYTHONUNBUFFERED=1 && ros2 run drive_controls drive.py; exec bash'"
 
 # ==============================================================================
 # STEP 0: PRE-FLIGHT CLEANUP (THE "DOUBLE TAP")

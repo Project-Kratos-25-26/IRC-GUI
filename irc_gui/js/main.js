@@ -106,7 +106,7 @@ function sendSysCommand(cmd) {
     // -------------------------------------------------------------------------
     // Define a list of commands that require the Raspberry Pi to be connected.
     // These commands involve starting hardware or changing drive modes.
-    const blockedCmds = ['init_drive', 'init_ld', 'init_arm', 'manual_mode', 'auto_mode'];
+    const blockedCmds = ['init_drive', 'init_ld', 'init_arm'];
 
     // Check if the command is in the blocked list AND if the global 'raspiStatus'
     // (updated by the polling loop) is NOT 'ONLINE'.
@@ -198,18 +198,69 @@ function sendSysCommand(cmd) {
     }
 
     // -------------------------------------------------------------------------
-    // 4. STANDARD ROS COMMANDS
+    // 4. MODE SWITCHING (Local API - switch_mode.sh)
     // -------------------------------------------------------------------------
-    // For normal commands (e.g., 'manual_mode', 'auto_mode', etc.), we just
-    // publish them to the '/sys/command' ROS topic.
-    // The 'state_manager_node' listening on this topic will handle the logic.
+    if (cmd === 'manual_mode') {
+        console.log(`[DEBUG] manual_mode called - running switch_mode.sh via local API`);
+
+        fetch('/api/run_script', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ script: 'switch_mode.sh', args: ['thrustmaster'] })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Switched to manual mode:', data.message);
+                    updateMode('MANUAL');
+                } else {
+                    console.error('Switch mode failed:', data.error);
+                    alert('Failed to switch mode: ' + data.error);
+                }
+            })
+            .catch(err => {
+                console.error('Error switching mode:', err);
+                alert('Error switching mode: ' + err);
+            });
+
+        // Also publish to ROS for state_manager
+        sysPub.publish(new ROSLIB.Message({ data: cmd }));
+        return;
+    }
+
+    if (cmd === 'auto_mode') {
+        console.log(`[DEBUG] auto_mode called - running switch_mode.sh via local API`);
+
+        fetch('/api/run_script', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ script: 'switch_mode.sh', args: ['keyboard'] })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Switched to auto mode:', data.message);
+                    updateMode('AUTO');
+                } else {
+                    console.error('Switch mode failed:', data.error);
+                    alert('Failed to switch mode: ' + data.error);
+                }
+            })
+            .catch(err => {
+                console.error('Error switching mode:', err);
+                alert('Error switching mode: ' + err);
+            });
+
+        // Also publish to ROS for state_manager
+        sysPub.publish(new ROSLIB.Message({ data: cmd }));
+        return;
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. OTHER ROS COMMANDS
+    // -------------------------------------------------------------------------
+    // For other commands, publish them to the '/sys/command' ROS topic.
     sysPub.publish(new ROSLIB.Message({ data: cmd }));
-
-    // Optimistic UI updates for responsiveness:
-    // If we just clicked 'Manual Mode', update the badge immediately.
-    if (cmd === 'manual_mode') updateMode('MANUAL');
-    if (cmd === 'auto_mode') updateMode('AUTO');
-
     console.log(`System Command sent to ROS: ${cmd}`);
 }
 
