@@ -47,11 +47,8 @@ ros2 run joy joy_node --ros-args \
 echo "[LOCAL] Starting Telemetry Bridge..."
 python3 ../scripts/telemetry_bridge_node.py > "data/bridge.log" 2>&1 &
 
-echo "[LOCAL] Starting GUI Backend..."
+echo "[LOCAL] Starting GUI Backend (with State Manager)..."
 python3 ../scripts/gui_backend_node.py > "data/backend.log" 2>&1 &
-
-echo "[LOCAL] Starting State Manager..."
-python3 ../scripts/state_manager_node.py > "data/state_manager.log" 2>&1 &
 
 # 2.2 Start Rosbridge (Essential for Web Communication)
 echo "[LOCAL] Starting Rosbridge..."

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String
+from std_msgs.msg import String, Bool
 import subprocess
 import os
 from ament_index_python.packages import get_package_share_directory
@@ -9,6 +9,12 @@ from ament_index_python.packages import get_package_share_directory
 class GuiBackend(Node):
     def __init__(self):
         super().__init__('gui_backend')
+        
+        # === State Management (merged from state_manager_node) ===
+        self.state = 'IDLE'  # Default state
+        self.state_pub = self.create_publisher(String, '/system/state', 10)
+        self.create_subscription(Bool, '/auto/task_complete', self.task_complete_callback, 10)
+        self.state_timer = self.create_timer(0.1, self.publish_state)  # 10Hz
         
         # Subscribe to system commands from the Web GUI
         self.sys_sub = self.create_subscription(String, '/sys/command', self.command_callback, 10)
@@ -18,14 +24,16 @@ class GuiBackend(Node):
         # Subscribe to log requests
         self.log_sub = self.create_subscription(String, '/gui/log_request', self.log_callback, 10)
         
-        self.get_logger().info(f"GUI Backend Node Started. Listening on /sys/command.")
+        self.get_logger().info(f"GUI Backend Node Started (with State Manager). Listening on /sys/command.")
 
     def command_callback(self, msg):
         cmd = msg.data
         self.get_logger().info(f"Received command: {cmd}")
         
         if cmd == 'init_drive':
+            self.state = 'MANUAL'
             self.run_script('start_drive.sh')
+            self.get_logger().info("System Initialized: Switched to MANUAL state")
         elif cmd == 'init_servo':
             self.run_script('servo.sh')
         elif cmd == 'init_ld':
@@ -33,9 +41,16 @@ class GuiBackend(Node):
         elif cmd == 'init_arm':
             self.run_script('start_arm.sh')
         elif cmd == 'manual_mode' or cmd == 'MANUAL':
+            self.state = 'MANUAL'
             self.run_script('switch_mode.sh', ['thrustmaster'])
+            self.get_logger().info("Switched to MANUAL state")
         elif cmd == 'auto_mode' or cmd == 'PROCEED':
+            self.state = 'AUTONOMOUS'
             self.run_script('switch_mode.sh', ['keyboard'])
+            self.get_logger().info("Switched to AUTONOMOUS state")
+        elif cmd == 'task_complete':
+            self.state = 'MANUAL'
+            self.get_logger().info("Task Complete: Switching to MANUAL")
         elif cmd == 'restart_mavros':
             self.get_logger().warn("Restart MAVROS not fully implemented in backend yet.")
         elif cmd == 'init_mission':
@@ -87,6 +102,19 @@ class GuiBackend(Node):
             
         except Exception as e:
             self.get_logger().error(f"Failed to run script: {e}")
+
+    # === State Management Methods ===
+    def publish_state(self):
+        """Publishes the current system state at 10Hz."""
+        state_msg = String()
+        state_msg.data = self.state
+        self.state_pub.publish(state_msg)
+
+    def task_complete_callback(self, msg):
+        """Handle autonomous task completion signal."""
+        if msg.data:
+            self.state = 'MANUAL'
+            self.get_logger().info("Auto Task Complete -> Manual")
 
 def main(args=None):
     rclpy.init(args=args)
