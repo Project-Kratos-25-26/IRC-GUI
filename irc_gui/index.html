@@ -63,6 +63,7 @@
         <button class="tab-btn active" onclick="openTab('tab-recon')"><i class="fas fa-eye"></i> RECON</button>
         <button class="tab-btn" onclick="openTab('tab-mission')"><i class="fas fa-map-marked-alt"></i> MISSION</button>
         <button class="tab-btn" onclick="openTab('tab-arm')"><i class="fas fa-hand-rock"></i> ARM & LD</button>
+        <button class="tab-btn" onclick="openTab('tab-ld')"><i class="fas fa-dna"></i> LD DATA</button>
     </div>
 
     <div class="content">
@@ -170,6 +171,159 @@
                     </div>
                 </div>
             </div>
+        </div>
+        <div id="tab-ld" class="tab-pane">
+            <h3>LD SENSOR DATA</h3>
+                        <!-- <canvas id="spectral" width="100%" height="100%"></canvas> -->
+                        <!-- <script src="./js/ld.js" type="module"></script> -->
+            <div class="grid-2">
+                <div class="card card-compact">
+                    <canvas id="spectral" width="100%" height="100%"></canvas>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(minmax(0,1fr),2); gap: 20px;">
+                    <div class="grid-2">
+                         <div id="GPS-data" class="card card-compact">
+                            <h3 style="text-align: center;">GPS</h3>
+                            <table id="gps-table" style="background: #1a1a1a; color: #00ff00; font-family: monospace; border-collapse: collapse; width: 300px;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid #333;">
+                                <th style="text-align: left; padding: 10px;">DATA</th>
+                                <th style="text-align: right; padding: 10px;">VALUE</th>
+                                </tr>
+                            </thead>
+                            <tbody id="gps-table-body">
+                                <tr style="border-bottom: 2px solid #333;">
+                                <td class="value" style="padding: 8px; color: #fff;">LAT</td>
+                                <td id="gps-lat-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
+                                </tr>
+                                <tr style="border-bottom: 2px solid #333;">
+                                <td class="value" style="padding: 8px; color: #fff;">LONG</td>
+                                <td id="gps-long-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
+                                </tr>
+                                <tr style="border-bottom: 2px solid #333;">
+                                <td class="value" style="padding: 8px; color: #fff;">ALT</td>
+                                <td id="gps-alt-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                         </div>
+                        <div id="eCO2-data" class="card card-compact">
+                           <h3 style="text-align: center;">eCO2</h3>
+                           <table id="eco2-table" style="background: #1a1a1a; color: #00ff00; font-family: monospace; border-collapse: collapse; width: 300px;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid #333;">
+                                <th style="text-align: left; padding: 10px;">DATA</th>
+                                <th style="text-align: right; padding: 10px;">VALUE</th>
+                                </tr>
+                            </thead>
+                            <tbody id="eco2-body">
+                                <tr style="border-bottom: 2px solid #333;">
+                                <td class="value" style="padding: 8px; color: #fff;">CO2</td>
+                                <td id="co2-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
+                                </tr>
+                                <tr style="border-bottom: 2px solid #333;">
+                                <td class="value" style="padding: 8px; color: #fff;">TVOC</td>
+                                <td id="tvoc-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
+                                </tr>
+                                <tr style="border-bottom: 2px solid #333;">
+                                <td class="value" style="padding: 8px; color: #fff;">H2</td>
+                                <td id="h2-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
+                                </tr>
+                                <tr style="border-bottom: 2px solid #333;">
+                                <td class="value" style="padding: 8px; color: #fff;">ETH</td>
+                                <td id="eth-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div id="multi-channel-data" class="card card-compact">
+                            <h3 style="text-align: center;">Multi-Channel</h3>
+                            <table id="multi-table" style="background: #1a1a1a; color: #00ff00; font-family: monospace; border-collapse: collapse; width: 70%;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid #333;">
+                                <th style="text-align: left; padding: 10px;">DATA</th>
+                                <th style="text-align: right; padding: 10px;">VALUE</th>
+                                </tr>
+                            </thead>
+                            <tbody id="multi-table-body">
+                                <tr style="border-bottom: 2px solid #333;">
+                                <td class="value" style="padding: 8px; color: #fff;">CO</td>
+                                <td id="co-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
+                                </tr>
+                                <tr style="border-bottom: 2px solid #333;">
+                                <td class="value" style="padding: 8px; color: #fff;">NO2</td>
+                                <td id="no-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
+                                </tr>
+                                <tr style="border-bottom: 2px solid #333;">
+                                <td class="value" style="padding: 8px; color: #fff;">Ethyl Alcohol</td>
+                                <td id="eth-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
+                                </tr>
+                                <tr style="border-bottom: 2px solid #333;">
+                                <td class="value" style="padding: 8px; color: #fff;">VOCs</td>
+                                <td id="voc-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        </div>
+                        <div class="grid-2">
+                            <div id="NPK-data" class="card card-compact">
+                                <h3 style="text-align: center;">NPK</h3>
+                                <table id="npk-table" style="background: #1a1a1a; color: #00ff00; font-family: monospace; border-collapse: collapse; width: 70%;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid #333;">
+                                <th style="text-align: left; padding: 10px;">DATA</th>
+                                <th style="text-align: right; padding: 10px;">VALUE</th>
+                                </tr>
+                            </thead>
+                            <tbody id="npk-table-body">
+                                <tr style="border-bottom: 2px solid #333;">
+                                <td class="value" style="padding: 8px; color: #fff;">N</td>
+                                <td id="npk-n-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
+                                </tr>
+                                <tr style="border-bottom: 2px solid #333;">
+                                <td class="value" style="padding: 8px; color: #fff;">P</td>
+                                <td id="npk-p-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
+                                </tr>
+                                <tr style="border-bottom: 2px solid #333;">
+                                <td class="value" style="padding: 8px; color: #fff;">K</td>
+                                <td id="npk-k-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
+                                </tr>
+                            </tbody>
+
+                        </table>
+                            </div>
+                            <div id="dht-data" class="card card-compact">
+                                <h3 style="text-align: center;">DHT</h3>
+                                <table id="dht-table" style="background: #1a1a1a; color: #00ff00; font-family: monospace; border-collapse: collapse; width: 70%;">
+                                <thead>
+                                    <tr style="border-bottom: 2px solid #333;">
+                                    <th style="text-align: left; padding: 10px;">DATA</th>
+                                    <th style="text-align: right; padding: 10px;">VALUE</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dht-table-body">
+                                    <tr style="border-bottom: 2px solid #333;">
+                                    <td class="value" style="padding: 8px; color: #fff;">LAT</td>
+                                    <td id="dht-hum-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
+                                    </tr>
+                                    <tr style="border-bottom: 2px solid #333;">
+                                    <td class="value" style="padding: 8px; color: #fff;">LONG</td>
+                                    <td id="dht-temp-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            </div>
+
+                        </div>
+                    </div>
+                </div> 
+            </div>
+                    <script src="./js/ld.js" type="module"></script>
+
+        </div>
+
         </div>
 
         <div id="tab-health" class="tab-pane">
