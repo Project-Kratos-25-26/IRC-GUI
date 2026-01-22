@@ -108,9 +108,9 @@ gps_topic.subscribe((message) => {
     const gps_lat = document.getElementById("gps-lat-value");
     const gps_long = document.getElementById("gps-long-value");
     const gps_alt = document.getElementById("gps-alt-value");
-    gps_lat.textContent = message.latitude.toFixed(6);
-    gps_long.textContent = message.longitude.toFixed(6);
-    gps_alt.textContent = message.altitude.toFixed(6);
+    if(gps_lat) gps_lat.textContent = message.latitude.toFixed(6);
+    if(gps_long) gps_long.textContent = message.longitude.toFixed(6);
+    if(gps_alt) gps_alt.textContent = message.altitude.toFixed(6);
     
 })
 
@@ -120,11 +120,29 @@ multi_topic.subscribe((message) => {
     const eth_value = document.getElementById('eth-value');
     const voc_value = document.getElementById('voc-value');
 
-    co_value.textContent = message.data[];
-    co_value.textContent = message.data[];
-    co_value.textContent = message.data[];
-    co_value.textContent = message.data[];
+    if(co_value) co_value.textContent = message.data[0];
+    if(no_value) no_value.textContent = message.data[1];
+    if(eth_value) eth_value.textContent = message.data[2];
+    if(voc_value) voc_value.textContent = message.data[3];
   
+})
+
+npk_topic.subscribe((message) => {
+    const n_value = document.getElementById('npk-n-value');
+    const p_value = document.getElementById('npk-p-value');
+    const k_value = document.getElementById('npk-k-value');
+
+    if(n_value) n_value.textContent = message.data[0];
+    if(p_value) p_value.textContent = message.data[1];
+    if(k_value) k_value.textContent = message.data[2];
+})
+
+dht_topic.subscribe((message) => {
+    const hum_value = document.getElementById('dht-hum-value');
+    const temp_value = document.getElementById('dht-temp-value');
+
+    if(hum_value) hum_value.textContent = message.data[0];
+    if(temp_value) temp_value.textContent = message.data[1];
 })
 
 
