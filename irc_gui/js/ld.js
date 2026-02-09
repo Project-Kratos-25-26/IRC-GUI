@@ -13,7 +13,7 @@ const labels = [
 let spectralData = new Array(18).fill(0);
 
 // ROS Connection with debugging
-const ros = new ROSLIB.Ros({ url: "ws://0.0.0.0:9090" });
+const ros = new ROSLIB.Ros({ url: "ws://localhost:9090" });
 
 ros.on('connection', () => {
     console.log('✅ Connected to rosbridge at', CONFIG.ROSBRIDGE_URL);
@@ -47,7 +47,9 @@ const chart = new Chart(ctx, {
         maintainAspectRatio: false,
         scales: {
             y: {
-                beginAtZero: true
+                min: 0,
+                max: 10,
+                beginAtZero: false
             }
         }
     }
@@ -75,7 +77,7 @@ const dht_topic = new ROSLIB.Topic({
 const npk_topic = new ROSLIB.Topic({
     ros: ros,
     name: CONFIG.TOPICS.NPK,
-    messageType: 'std_msgs/msg/Float32MultiArray'
+    messageType: 'std_msgs/msg/Float64MultiArray'
 });
 
 const eco2_topic = new ROSLIB.Topic({
@@ -95,7 +97,7 @@ const gps_topic = new ROSLIB.Topic({
 spectral_topic.subscribe((message) => {
     console.log('📊 Data received:', message.data);
     
-    if (message.data && message.data.length === 18) {
+    if (message.data && message.data.length === 21) {
         chart.data.datasets[0].data = message.data;
         chart.update('none');
     } else {
@@ -117,7 +119,7 @@ gps_topic.subscribe((message) => {
 multi_topic.subscribe((message) => {
     const co_value = document.getElementById('co-value');
     const no_value = document.getElementById('no-value');
-    const eth_value = document.getElementById('eth-value');
+    const eth_value = document.getElementById('ethyl-value');
     const voc_value = document.getElementById('voc-value');
 
     if(co_value) co_value.textContent = message.data[0];
@@ -128,13 +130,21 @@ multi_topic.subscribe((message) => {
 })
 
 npk_topic.subscribe((message) => {
+    const moisture = document.getElementById('moisture');
+    const temp = document.getElementById('temp');
+    const ec = document.getElementById('ec');
+    const ph = document.getElementById('ph');
     const n_value = document.getElementById('npk-n-value');
     const p_value = document.getElementById('npk-p-value');
     const k_value = document.getElementById('npk-k-value');
 
-    if(n_value) n_value.textContent = message.data[0];
-    if(p_value) p_value.textContent = message.data[1];
-    if(k_value) k_value.textContent = message.data[2];
+    if(moisture) moisture.textContent = message.data[0];
+    if(temp) temp.textContent = message.data[1];
+    if(ec) ec.textContent = message.data[2];
+    if(ph) ph.textContent = message.data[3];
+    if(n_value) n_value.textContent = message.data[4];
+    if(p_value) p_value.textContent = message.data[5];
+    if(k_value) k_value.textContent = message.data[6];
 })
 
 dht_topic.subscribe((message) => {
@@ -146,3 +156,16 @@ dht_topic.subscribe((message) => {
 })
 
 
+eco2_topic.subscribe((message) => {
+    const co2_value = document.getElementById('co2-value');
+    const tvoc_value = document.getElementById('tvoc-value');
+    const h2_value = document.getElementById('h2-value');
+    const eth_value = document.getElementById('eth-value');
+
+
+    if(co2_value) co2_value.textContent = message.data[0];
+    if(tvoc_value) tvoc_value.textContent = message.data[1];
+    if(h2_value) h2_value.textContent = message.data[2];
+    if(eth_value) eth_value.textContent = message.data[3];
+
+})

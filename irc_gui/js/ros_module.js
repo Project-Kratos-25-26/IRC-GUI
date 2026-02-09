@@ -13,7 +13,7 @@ ros.on('close', () => {
 });
 
 // Initialize LOCAL ROS connection for joystick data
-const rosLocal = new ROSLIB.Ros({ url: 'ws://localhost:9099' });
+const rosLocal = new ROSLIB.Ros({ url: 'ws://localhost:9090' });
 
 rosLocal.on('connection', () => {
     console.log("ROS Connected to Local");
@@ -51,6 +51,7 @@ const logPub = createTopic(CONFIG.TOPICS.LOG, 'std_msgs/String');
 // --- SUBSCRIBE TO HEALTH ---
 const healthSub = createTopic(CONFIG.TOPICS.HEALTH, 'std_msgs/String');
 healthSub.subscribe((msg) => {
+    console.log(msg)
     if (window.renderHealth) window.renderHealth(JSON.parse(msg.data));
 });
 

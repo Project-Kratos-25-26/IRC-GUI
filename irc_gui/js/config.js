@@ -1,7 +1,7 @@
 // Configuration Constants
 const CONFIG = {
     // ROSBridge WebSocket URL (rosbridge runs on Orin where ROS nodes are)
-    ROSBRIDGE_URL: `ws://localhost:9099`,
+    ROSBRIDGE_URL: `ws://localhost:9090`,
 
     // Camera Sources Map (6 USB cameras via GStreamer)
     CAMERA_SOURCES: {
@@ -24,6 +24,11 @@ const CONFIG = {
         CMD: '/gcs/command',
         SYS: '/sys/command',
         ARM: '/arm/joint_commands',
-        LOG: '/gui/log_request'
+        LOG: '/gui/log_request',
+        SPECTRAL: '/spectral_data',
+        ECO2: '/eco2_data',
+        MULTI: '/gas_data',
+        DHT: '/dht_data',
+        NPK: '/npk_data'
     }
 };
