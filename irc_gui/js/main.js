@@ -1,3 +1,47 @@
+// --- WAYPOINT LOGGING ---
+function logWaypoint(waypointName) {
+    // Get current position from odometry display (same as sendLog for cones)
+    const lat = document.getElementById('odom-x').textContent;
+    const lon = document.getElementById('odom-y').textContent;
+    const timestamp = new Date().toLocaleTimeString();
+
+    const type = 'waypoint';
+    const color = 'unknown';
+
+    // Save to Orin via API (writes to waypoints.txt)
+    fetch('/api/waypoints/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            name: waypointName,
+            lat: lat,
+            lon: lon,
+            timestamp: timestamp
+        })
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                console.log('Waypoint saved to Orin:', waypointName);
+            } else {
+                console.error('Failed to save waypoint:', data.error);
+            }
+        })
+        .catch(e => {
+            console.error('Waypoint save request failed:', e);
+        });
+
+    // Add to chronological log only (user can manually add to queue from there)
+    addCoordinateLog(type, color, lat, lon, timestamp);
+    addMissionLog(`Logged ${waypointName} at [${lat}, ${lon}]`);
+
+    // Show status to user
+    const statusDiv = document.getElementById('waypoint-log-status');
+    if (statusDiv) {
+        statusDiv.textContent = `Logged ${waypointName} at [${lat}, ${lon}]`;
+        setTimeout(() => { statusDiv.textContent = ''; }, 3000);
+    }
+}
 // Tab Switching
 let currentActiveTab = 'tab-recon'; // Default in index.html
 
@@ -242,6 +286,106 @@ function updateMode(mode) {
 // --- LOGGING LOGIC ---
 let selectedColor = null;
 
+// --- CHRONOLOGICAL LOG TAB ---
+let coordinateLogs = [];
+
+function addCoordinateLog(type, color, lat, lon, timestamp) {
+    coordinateLogs.push({ type, color, lat, lon, timestamp });
+    renderChronologicalLog();
+    // Note: The mission plan grid is updated by sendLog() or refreshMissionPlan() calls,
+    // so we don't need to duplicate the API call here
+}
+
+// Load saved waypoints from Orin on page refresh
+function loadSavedWaypoints() {
+    fetch('/api/waypoints')
+        .then(r => r.json())
+        .then(waypoints => {
+            waypoints.forEach(wp => {
+                // Check if already exists to avoid duplicates
+                const exists = coordinateLogs.some(log =>
+                    log.type === 'waypoint' &&
+                    parseFloat(log.lat) === parseFloat(wp.lat) &&
+                    parseFloat(log.lon) === parseFloat(wp.lon)
+                );
+                if (!exists) {
+                    coordinateLogs.push({
+                        type: 'waypoint',
+                        color: wp.name || 'unknown',  // Use waypoint name as "color" field
+                        lat: wp.lat,
+                        lon: wp.lon,
+                        timestamp: wp.timestamp || 'saved'
+                    });
+                }
+            });
+            renderChronologicalLog();
+            console.log(`Loaded ${waypoints.length} saved waypoints from Orin`);
+        })
+        .catch(e => {
+            console.warn('Could not load saved waypoints:', e);
+        });
+}
+
+// Clear all waypoints from Orin and local log
+function clearWaypoints() {
+    if (!confirm('Clear all waypoints? This will remove them from both the display and the Orin.')) {
+        return;
+    }
+
+    fetch('/api/waypoints/clear', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                // Also clear local waypoint entries from coordinateLogs
+                coordinateLogs = coordinateLogs.filter(log => log.type !== 'waypoint');
+                renderChronologicalLog();
+                addMissionLog('Waypoints cleared from Orin');
+                console.log('Waypoints cleared successfully');
+            } else {
+                console.error('Failed to clear waypoints:', data.error);
+                alert('Failed to clear waypoints: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(e => {
+            console.error('Clear waypoints request failed:', e);
+            alert('Failed to clear waypoints: ' + e);
+        });
+}
+
+function renderChronologicalLog() {
+    const container = document.getElementById('chronological-log');
+    if (!container) return;
+    if (coordinateLogs.length === 0) {
+        container.innerHTML = '<div class="queue-empty">No coordinate logs yet.</div>';
+        return;
+    }
+    let html = '<ul class="chronological-list" style="list-style:none; padding:0;">';
+    coordinateLogs.forEach((log, idx) => {
+        html += `<li class="chronological-item" style="display:flex; align-items:center; gap:12px; margin-bottom:10px; background:#222; border-radius:6px; padding:10px;">
+            <span class="chronological-index" style="font-weight:bold; color:#aaa; font-size:18px; min-width:32px; text-align:center;">${idx + 1}</span>
+            <span class="chronological-time" style="color:#888; min-width:70px;">${log.timestamp}</span>
+            <span class="chronological-type" style="color:${log.color === 'yellow' ? '#f1c40f' : log.color}; font-weight:bold; min-width:100px;">${log.type.toUpperCase()} - ${log.color.toUpperCase()}</span>
+            <span class="chronological-coords" style="font-family:monospace; min-width:120px;">${parseFloat(log.lat).toFixed(6)}, ${parseFloat(log.lon).toFixed(6)}</span>
+            <button class="btn-blue" style="margin-left:auto; font-size:16px; padding:8px 18px; border-radius:6px; font-weight:bold; display:flex; align-items:center; gap:6px; cursor:pointer;" onclick="addCoordLogToQueue(${idx})">
+                <i class='fas fa-plus'></i> Add to Queue
+            </button>
+        </li>`;
+    });
+    html += '</ul>';
+    container.innerHTML = html;
+}
+
+window.addCoordLogToQueue = function (idx) {
+    const log = coordinateLogs[idx];
+    if (!log) return;
+    // Use QUEUE|INDEX|type|color|lat|lon format for id
+    const id = `QUEUE|${missionQueue.length}|${log.type}|${log.color}|${log.lat}|${log.lon}`;
+    addToQueue(id, log.type, log.color, parseFloat(log.lat), parseFloat(log.lon));
+};
+
 function selColor(c) {
     selectedColor = c;
     document.getElementById('log-msg').textContent = `Selected: ${c}`;
@@ -270,6 +414,8 @@ function sendLog() {
         .then(data => {
             if (data.success) {
                 console.log('Logged to mission plan via SSH');
+                // Refresh mission plan grid after successful save
+                setTimeout(refreshMissionPlan, 300);
             } else {
                 console.error('Failed to log:', data.error);
                 alert('Failed to log: ' + (data.error || 'Unknown error'));
@@ -284,16 +430,17 @@ function sendLog() {
     document.getElementById('log-msg').textContent = logText;
     console.log(logText);
 
+    // Add to chronological log (only for coordinate logs)
+    addCoordinateLog(objType, selectedColor, xStr, yStr, new Date().toLocaleTimeString());
+
     // Add visual marker to map
     const x = parseFloat(xStr);
     const y = parseFloat(yStr);
     if (typeof map !== 'undefined' && x !== 0) {
         L.marker([x, y]).addTo(map).bindPopup(`${objType}: ${selectedColor}`).openPopup();
     }
-
-    // Refresh mission plan display if on mission tab
-    setTimeout(refreshMissionPlan, 500);
 }
+
 
 // --- MISSION PLAN MANAGEMENT ---
 let missionPlanData = {};
@@ -309,6 +456,20 @@ function refreshMissionPlan() {
         .then(r => r.json())
         .then(data => {
             missionPlanData = data;
+            // Sync pickups and dropoffs to chronological log if missing
+            const colors = ['red', 'yellow', 'orange', 'blue', 'green'];
+            colors.forEach(color => {
+                (data.pickup?.[color] || []).forEach(coord => {
+                    if (!coordinateLogs.some(log => log.type === 'pickup' && log.color === color && parseFloat(log.lat) === parseFloat(coord.lat) && parseFloat(log.lon) === parseFloat(coord.lon))) {
+                        addCoordinateLog('pickup', color, coord.lat, coord.lon, new Date().toLocaleTimeString());
+                    }
+                });
+                (data.dropoff?.[color] || []).forEach(coord => {
+                    if (!coordinateLogs.some(log => log.type === 'dropoff' && log.color === color && parseFloat(log.lat) === parseFloat(coord.lat) && parseFloat(log.lon) === parseFloat(coord.lon))) {
+                        addCoordinateLog('dropoff', color, coord.lat, coord.lon, new Date().toLocaleTimeString());
+                    }
+                });
+            });
             renderMissionPlanGrid(data);
         })
         .catch(e => {
@@ -458,6 +619,15 @@ function clearMissionQueue() {
     renderMissionQueue();
     renderMissionPlanGrid(missionPlanData);
     addMissionLog('Mission queue cleared');
+
+    // Send CLEAR command to backend to clear any existing goals in the node
+    const goalPub = new ROSLIB.Topic({
+        ros: ros,
+        name: '/mission/set_goal',
+        messageType: 'std_msgs/String'
+    });
+    goalPub.publish(new ROSLIB.Message({ data: 'CLEAR' }));
+    addMissionLog('Sent CLEAR command to backend');
 }
 
 // --- COORDINATE EDITING ---
@@ -593,17 +763,34 @@ function sendCurrentGoal() {
     // Show mission status
     showMissionStatus(`Navigating to #${currentMissionIndex + 1}: ${goal.type} ${goal.color}`);
 
-    // Publish goal to ROS
-    const goalData = `QUEUE|${currentMissionIndex}|${goal.type}|${goal.color}|${goal.lat}|${goal.lon}`;
-
     const goalPub = new ROSLIB.Topic({
         ros: ros,
         name: '/mission/set_goal',
         messageType: 'std_msgs/String'
     });
-    goalPub.publish(new ROSLIB.Message({ data: goalData }));
 
-    // Send PROCEED command
+    // ALWAYS clear the backend queue first before sending new goals
+    // This prevents ghost waypoints from previous missions
+    goalPub.publish(new ROSLIB.Message({ data: 'CLEAR' }));
+
+    // Decide format based on queue length:
+    // - Single goal: use GOAL|type|color|lat|lon format
+    // - Multiple goals: use QUEUE|INDEX|type|color|lat|lon format for each
+    if (missionQueue.length === 1) {
+        // Single goal - use legacy GOAL format
+        const goalData = `GOAL|${goal.type}|${goal.color}|${goal.lat}|${goal.lon}`;
+        goalPub.publish(new ROSLIB.Message({ data: goalData }));
+        addMissionLog(`Sending single goal: ${goal.type} ${goal.color}`);
+    } else {
+        // Multiple goals - send all waypoints with QUEUE|INDEX format
+        missionQueue.forEach((queueItem, idx) => {
+            const queueData = `QUEUE|${idx}|${queueItem.type}|${queueItem.color}|${queueItem.lat}|${queueItem.lon}`;
+            goalPub.publish(new ROSLIB.Message({ data: queueData }));
+            addMissionLog(`Queued waypoint #${idx}: ${queueItem.type} ${queueItem.color}`);
+        });
+    }
+
+    // Send PROCEED command after a short delay to ensure goals are received
     setTimeout(() => {
         sysPub.publish(new ROSLIB.Message({ data: 'PROCEED' }));
     }, 100);
@@ -757,6 +944,9 @@ window.openTab = function (id) {
     originalOpenTab(id);
     if (id === 'tab-mission') {
         refreshMissionPlan();
+    }
+    if (id === 'tab-chronological') {
+        renderChronologicalLog();
     }
 };
 
@@ -1547,6 +1737,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (toggle) {
         toggle.checked = soundEnabled;
     }
+
+    // Load saved waypoints from Orin into chronological log
+    loadSavedWaypoints();
 });
 
 // Expose globally

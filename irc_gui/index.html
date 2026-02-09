@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="css/vendor/all.min.css">
 
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
     <!-- PS5 Controller Button Styles (from drive_gui/test) -->
     <style>
@@ -174,503 +175,511 @@
         </div>
         <div id="tab-ld" class="tab-pane">
             <h3>LD SENSOR DATA</h3>
-                        <!-- <canvas id="spectral" width="100%" height="100%"></canvas> -->
-                        <!-- <script src="./js/ld.js" type="module"></script> -->
+            <!-- <canvas id="spectral" width="100%" height="100%"></canvas> -->
+            <!-- <script src="./js/ld.js" type="module"></script> -->
             <div class="grid-2">
                 <div class="card card-compact">
                     <canvas id="spectral" width="100%" height="100%"></canvas>
                 </div>
                 <div style="display: grid; grid-template-columns: repeat(minmax(0,1fr),2); gap: 20px;">
                     <div class="grid-2">
-                         <div id="GPS-data" class="card card-compact">
+                        <div id="GPS-data" class="card card-compact">
                             <h3 style="text-align: center;">GPS</h3>
-                            <table id="gps-table" style="background: #1a1a1a; color: #00ff00; font-family: monospace; border-collapse: collapse; width: 300px;">
-                            <thead>
-                                <tr style="border-bottom: 2px solid #333;">
-                                <th style="text-align: left; padding: 10px;">DATA</th>
-                                <th style="text-align: right; padding: 10px;">VALUE</th>
-                                </tr>
-                            </thead>
-                            <tbody id="gps-table-body">
-                                <tr style="border-bottom: 2px solid #333;">
-                                <td class="value" style="padding: 8px; color: #fff;">LAT</td>
-                                <td id="gps-lat-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
-                                </tr>
-                                <tr style="border-bottom: 2px solid #333;">
-                                <td class="value" style="padding: 8px; color: #fff;">LONG</td>
-                                <td id="gps-long-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
-                                </tr>
-                                <tr style="border-bottom: 2px solid #333;">
-                                <td class="value" style="padding: 8px; color: #fff;">ALT</td>
-                                <td id="gps-alt-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                         </div>
+                            <table id="gps-table"
+                                style="background: #1a1a1a; color: #00ff00; font-family: monospace; border-collapse: collapse; width: 300px;">
+                                <thead>
+                                    <tr style="border-bottom: 2px solid #333;">
+                                        <th style="text-align: left; padding: 10px;">DATA</th>
+                                        <th style="text-align: right; padding: 10px;">VALUE</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="gps-table-body">
+                                    <tr style="border-bottom: 2px solid #333;">
+                                        <td class="value" style="padding: 8px; color: #fff;">LAT</td>
+                                        <td id="gps-lat-value" class="name"
+                                            style="padding: 8px; text-align: right; color: #888;"></td>
+                                    </tr>
+                                    <tr style="border-bottom: 2px solid #333;">
+                                        <td class="value" style="padding: 8px; color: #fff;">LONG</td>
+                                        <td id="gps-long-value" class="name"
+                                            style="padding: 8px; text-align: right; color: #888;"></td>
+                                    </tr>
+                                    <tr style="border-bottom: 2px solid #333;">
+                                        <td class="value" style="padding: 8px; color: #fff;">ALT</td>
+                                        <td id="gps-alt-value" class="name"
+                                            style="padding: 8px; text-align: right; color: #888;"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                         <div id="eCO2-data" class="card card-compact">
-                           <h3 style="text-align: center;">eCO2</h3>
-                           <table id="eco2-table" style="background: #1a1a1a; color: #00ff00; font-family: monospace; border-collapse: collapse; width: 300px;">
-                            <thead>
-                                <tr style="border-bottom: 2px solid #333;">
-                                <th style="text-align: left; padding: 10px;">DATA</th>
-                                <th style="text-align: right; padding: 10px;">VALUE</th>
-                                </tr>
-                            </thead>
-                            <tbody id="eco2-body">
-                                <tr style="border-bottom: 2px solid #333;">
-                                <td class="value" style="padding: 8px; color: #fff;">CO2</td>
-                                <td id="co2-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
-                                </tr>
-                                <tr style="border-bottom: 2px solid #333;">
-                                <td class="value" style="padding: 8px; color: #fff;">TVOC</td>
-                                <td id="tvoc-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
-                                </tr>
-                                <tr style="border-bottom: 2px solid #333;">
-                                <td class="value" style="padding: 8px; color: #fff;">H2</td>
-                                <td id="h2-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
-                                </tr>
-                                <tr style="border-bottom: 2px solid #333;">
-                                <td class="value" style="padding: 8px; color: #fff;">ETH</td>
-                                <td id="eth-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
-                                </tr>
-                            </tbody>
-                        </table>
+                            <h3 style="text-align: center;">eCO2</h3>
+                            <table id="eco2-table"
+                                style="background: #1a1a1a; color: #00ff00; font-family: monospace; border-collapse: collapse; width: 300px;">
+                                <thead>
+                                    <tr style="border-bottom: 2px solid #333;">
+                                        <th style="text-align: left; padding: 10px;">DATA</th>
+                                        <th style="text-align: right; padding: 10px;">VALUE</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="eco2-body">
+                                    <tr style="border-bottom: 2px solid #333;">
+                                        <td class="value" style="padding: 8px; color: #fff;">CO2</td>
+                                        <td id="co2-value" class="name"
+                                            style="padding: 8px; text-align: right; color: #888;"></td>
+                                    </tr>
+                                    <tr style="border-bottom: 2px solid #333;">
+                                        <td class="value" style="padding: 8px; color: #fff;">TVOC</td>
+                                        <td id="tvoc-value" class="name"
+                                            style="padding: 8px; text-align: right; color: #888;"></td>
+                                    </tr>
+                                    <tr style="border-bottom: 2px solid #333;">
+                                        <td class="value" style="padding: 8px; color: #fff;">H2</td>
+                                        <td id="h2-value" class="name"
+                                            style="padding: 8px; text-align: right; color: #888;"></td>
+                                    </tr>
+                                    <tr style="border-bottom: 2px solid #333;">
+                                        <td class="value" style="padding: 8px; color: #fff;">ETH</td>
+                                        <td id="eth-value" class="name"
+                                            style="padding: 8px; text-align: right; color: #888;"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                     <div class="grid-2">
                         <div id="multi-channel-data" class="card card-compact">
                             <h3 style="text-align: center;">Multi-Channel</h3>
-                            <table id="multi-table" style="background: #1a1a1a; color: #00ff00; font-family: monospace; border-collapse: collapse; width: 70%;">
-                            <thead>
-                                <tr style="border-bottom: 2px solid #333;">
-                                <th style="text-align: left; padding: 10px;">DATA</th>
-                                <th style="text-align: right; padding: 10px;">VALUE</th>
-                                </tr>
-                            </thead>
-                            <tbody id="multi-table-body">
-                                <tr style="border-bottom: 2px solid #333;">
-                                <td class="value" style="padding: 8px; color: #fff;">CO</td>
-                                <td id="co-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
-                                </tr>
-                                <tr style="border-bottom: 2px solid #333;">
-                                <td class="value" style="padding: 8px; color: #fff;">NO2</td>
-                                <td id="no-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
-                                </tr>
-                                <tr style="border-bottom: 2px solid #333;">
-                                <td class="value" style="padding: 8px; color: #fff;">Ethyl Alcohol</td>
-                                <td id="eth-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
-                                </tr>
-                                <tr style="border-bottom: 2px solid #333;">
-                                <td class="value" style="padding: 8px; color: #fff;">VOCs</td>
-                                <td id="voc-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
-                                </tr>
-                            </tbody>
-                        </table>
+                            <table id="multi-table"
+                                style="background: #1a1a1a; color: #00ff00; font-family: monospace; border-collapse: collapse; width: 70%;">
+                                <thead>
+                                    <tr style="border-bottom: 2px solid #333;">
+                                        <th style="text-align: left; padding: 10px;">DATA</th>
+                                        <th style="text-align: right; padding: 10px;">VALUE</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="multi-table-body">
+                                    <tr style="border-bottom: 2px solid #333;">
+                                        <td class="value" style="padding: 8px; color: #fff;">CO</td>
+                                        <td id="co-value" class="name"
+                                            style="padding: 8px; text-align: right; color: #888;"></td>
+                                    </tr>
+                                    <tr style="border-bottom: 2px solid #333;">
+                                        <td class="value" style="padding: 8px; color: #fff;">NO2</td>
+                                        <td id="no-value" class="name"
+                                            style="padding: 8px; text-align: right; color: #888;"></td>
+                                    </tr>
+                                    <tr style="border-bottom: 2px solid #333;">
+                                        <td class="value" style="padding: 8px; color: #fff;">Ethyl Alcohol</td>
+                                        <td id="eth-value" class="name"
+                                            style="padding: 8px; text-align: right; color: #888;"></td>
+                                    </tr>
+                                    <tr style="border-bottom: 2px solid #333;">
+                                        <td class="value" style="padding: 8px; color: #fff;">VOCs</td>
+                                        <td id="voc-value" class="name"
+                                            style="padding: 8px; text-align: right; color: #888;"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                         <div class="grid-2">
                             <div id="NPK-data" class="card card-compact">
                                 <h3 style="text-align: center;">NPK</h3>
-                                <table id="npk-table" style="background: #1a1a1a; color: #00ff00; font-family: monospace; border-collapse: collapse; width: 70%;">
-                            <thead>
-                                <tr style="border-bottom: 2px solid #333;">
-                                <th style="text-align: left; padding: 10px;">DATA</th>
-                                <th style="text-align: right; padding: 10px;">VALUE</th>
-                                </tr>
-                            </thead>
-                            <tbody id="npk-table-body">
-                                <tr style="border-bottom: 2px solid #333;">
-                                <td class="value" style="padding: 8px; color: #fff;">N</td>
-                                <td id="npk-n-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
-                                </tr>
-                                <tr style="border-bottom: 2px solid #333;">
-                                <td class="value" style="padding: 8px; color: #fff;">P</td>
-                                <td id="npk-p-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
-                                </tr>
-                                <tr style="border-bottom: 2px solid #333;">
-                                <td class="value" style="padding: 8px; color: #fff;">K</td>
-                                <td id="npk-k-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
-                                </tr>
-                            </tbody>
+                                <table id="npk-table"
+                                    style="background: #1a1a1a; color: #00ff00; font-family: monospace; border-collapse: collapse; width: 70%;">
+                                    <thead>
+                                        <tr style="border-bottom: 2px solid #333;">
+                                            <th style="text-align: left; padding: 10px;">DATA</th>
+                                            <th style="text-align: right; padding: 10px;">VALUE</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="npk-table-body">
+                                        <tr style="border-bottom: 2px solid #333;">
+                                            <td class="value" style="padding: 8px; color: #fff;">N</td>
+                                            <td id="npk-n-value" class="name"
+                                                style="padding: 8px; text-align: right; color: #888;"></td>
+                                        </tr>
+                                        <tr style="border-bottom: 2px solid #333;">
+                                            <td class="value" style="padding: 8px; color: #fff;">P</td>
+                                            <td id="npk-p-value" class="name"
+                                                style="padding: 8px; text-align: right; color: #888;"></td>
+                                        </tr>
+                                        <tr style="border-bottom: 2px solid #333;">
+                                            <td class="value" style="padding: 8px; color: #fff;">K</td>
+                                            <td id="npk-k-value" class="name"
+                                                style="padding: 8px; text-align: right; color: #888;"></td>
+                                        </tr>
+                                    </tbody>
 
-                        </table>
+                                </table>
                             </div>
                             <div id="dht-data" class="card card-compact">
                                 <h3 style="text-align: center;">DHT</h3>
-                                <table id="dht-table" style="background: #1a1a1a; color: #00ff00; font-family: monospace; border-collapse: collapse; width: 70%;">
-                                <thead>
-                                    <tr style="border-bottom: 2px solid #333;">
-                                    <th style="text-align: left; padding: 10px;">DATA</th>
-                                    <th style="text-align: right; padding: 10px;">VALUE</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="dht-table-body">
-                                    <tr style="border-bottom: 2px solid #333;">
-                                    <td class="value" style="padding: 8px; color: #fff;">LAT</td>
-                                    <td id="dht-hum-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
-                                    </tr>
-                                    <tr style="border-bottom: 2px solid #333;">
-                                    <td class="value" style="padding: 8px; color: #fff;">LONG</td>
-                                    <td id="dht-temp-value" class="name" style="padding: 8px; text-align: right; color: #888;"></td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                                <table id="dht-table"
+                                    style="background: #1a1a1a; color: #00ff00; font-family: monospace; border-collapse: collapse; width: 70%;">
+                                    <thead>
+                                        <tr style="border-bottom: 2px solid #333;">
+                                            <th style="text-align: left; padding: 10px;">DATA</th>
+                                            <th style="text-align: right; padding: 10px;">VALUE</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dht-table-body">
+                                        <tr style="border-bottom: 2px solid #333;">
+                                            <td class="value" style="padding: 8px; color: #fff;">LAT</td>
+                                            <td id="dht-hum-value" class="name"
+                                                style="padding: 8px; text-align: right; color: #888;"></td>
+                                        </tr>
+                                        <tr style="border-bottom: 2px solid #333;">
+                                            <td class="value" style="padding: 8px; color: #fff;">LONG</td>
+                                            <td id="dht-temp-value" class="name"
+                                                style="padding: 8px; text-align: right; color: #888;"></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
 
                         </div>
                     </div>
-                </div> 
-            </div>
-                    <script src="./js/ld.js" type="module"></script>
-
-        </div>
-
-        </div>
-
-        <div id="tab-health" class="tab-pane">
-            <div class="card" style="max-width: 1800px; margin: 0 auto; padding: 20px;">
-                <h3>Device Status</h3>
-                <div class="health-row"><span>Raspberry Pi</span><span id="health-raspi" style="color:#aaa">--</span>
                 </div>
-                <div class="health-row"><span>Jetson</span><span id="health-jetson" style="color:#aaa">--</span></div>
-                <div id="health-cameras" style="margin-top:20px; border-top:1px solid #444; padding-top:15px;"></div>
             </div>
+            <script src="./js/ld.js" type="module"></script>
+
         </div>
 
-        <div id="tab-recon" class="tab-pane active">
-            <div class="grid-2">
-                <!-- LEFT COLUMN -->
-                <div style="display:flex; flex-direction:column; gap:10px; min-height:0;">
-                    <!-- CAMERA POPUP BUTTON (Replaces embedded streams) -->
-                    <div class="card"
-                        style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border: 2px solid #0f3460;">
-                        <div style="text-align:center;">
-                            <i class="fas fa-video"
-                                style="font-size: 64px; color: cyan; margin-bottom: 20px; display: block;"></i>
-                            <h2 style="color: #fff; margin-bottom: 10px; font-size: 24px;">Camera Feeds</h2>
-                            <p style="color: #888; margin-bottom: 25px; font-size: 14px;">Open cameras in a separate
-                                window for better viewing</p>
-                            <button class="btn-popup" onclick="openCameraPopup()"
-                                style="padding: 15px 40px; font-size: 16px; margin: 0 auto;">
-                                <i class="fas fa-external-link-alt"></i> OPEN CAMERA WINDOW
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div style="display:flex; flex-direction:column; gap:10px; min-height:0;">
-                    <div class="card card-compact" style="padding:8px;">
-                        <h3 style="margin-bottom:5px;">GPS</h3>
-                        <div style="display:flex; gap:20px;">
-                            <span>LAT: <span id="gps-lat">0.000000</span></span>
-                            <span>LON: <span id="gps-lon">0.000000</span></span>
-                        </div>
-                    </div>
-                    <div class="card card-compact" style="padding:8px;">
-                        <h3 style="margin-bottom:5px;">Odometry (Logging)</h3>
-                        <div style="display:flex; gap:20px;">
-                            <span>X: <span id="odom-x">0.000</span></span>
-                            <span>Y: <span id="odom-y">0.000</span></span>
-                        </div>
-                    </div>
-                    <div class="card card-compact" style="padding:8px;">
-                        <h3 style="margin-bottom:5px;">Log Target</h3>
-                        <select id="obj-select" style="margin-bottom:5px;">
-                            <option value="pickup">PICKUP</option>
-                            <option value="dropoff">DROPOFF</option>
-                        </select>
-                        <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr 1fr; gap:5px;">
-                            <button class="btn-red" onclick="selColor('RED')">R</button>
-                            <button class="btn-yellow" onclick="selColor('YELLOW')">Y</button>
-                            <button class="btn-orange" onclick="selColor('ORANGE')"
-                                style="background:#f39c12;">O</button>
-                            <button class="btn-blue" onclick="selColor('BLUE')">B</button>
-                            <button class="btn-green" onclick="selColor('GREEN')">G</button>
-                        </div>
-                        <button class="btn-blue" style="margin-top:5px;" onclick="sendLog()">LOG</button>
-                        <div id="log-msg" style="text-align:center; font-size:12px; margin-top:3px;">Ready</div>
-                    </div>
-                    <div class="card card-compact" style="padding:8px;">
-                        <h3 style="margin-bottom:5px;">Status</h3>
-                        <div style="display:flex; justify-content:space-between; font-size:14px;">
-                            <span>RASPI: <span id="status-raspi-recon">--</span></span>
-                            <span>JETSON: <span id="status-jetson-recon">--</span></span>
-                        </div>
-                        <button class="btn-green" style="margin-top:8px;"
-                            onclick="sendSysCommand('init_drive')">INITIALIZE DRIVE</button>
-                    </div>
-                    <!-- Visuals Row -->
-                    <div style="display:flex; gap:10px; flex:1; min-height:0;">
-                        <div class="card card-compact"
-                            style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:8px;">
-                            <h3 style="margin-bottom:5px;">Thrustmaster</h3>
-                            <canvas id="joyCanvas" width="200" height="120"
-                                style="background:#222; border-radius:4px;"></canvas>
-                        </div>
-                        <div class="card card-compact"
-                            style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:8px;">
-                            <h3 style="margin-bottom:5px;">Vector</h3>
-                            <canvas id="vector-canvas" width="150" height="150"
-                                style="background:#222; border-radius:4px;"></canvas>
-                            <div style="display:flex; gap:8px; font-size:12px; color:#aaa; margin-top:3px;">
-                                <label><input type="checkbox" id="vec-inv-x" checked> X</label>
-                                <label><input type="checkbox" id="vec-inv-y" checked> Y</label>
-                                <label><input type="checkbox" id="vec-swap"> Sw</label>
-                            </div>
-                            <div style="display:flex; gap:10px; font-size:12px; color:#aaa;">
-                                <span>VX:<span id="val-vx" style="color:cyan">0</span></span>
-                                <span>VZ:<span id="val-vz" style="color:cyan">0</span></span>
-                                <span>SPD:<span id="val-spd" style="color:cyan">0</span></span>
-                            </div>
-                        </div>
+    </div>
+
+    <div id="tab-health" class="tab-pane">
+        <div class="card" style="max-width: 1800px; margin: 0 auto; padding: 20px;">
+            <h3>Device Status</h3>
+            <div class="health-row"><span>Raspberry Pi</span><span id="health-raspi" style="color:#aaa">--</span>
+            </div>
+            <div class="health-row"><span>Jetson</span><span id="health-jetson" style="color:#aaa">--</span></div>
+            <div id="health-cameras" style="margin-top:20px; border-top:1px solid #444; padding-top:15px;"></div>
+        </div>
+    </div>
+
+    <div id="tab-recon" class="tab-pane active">
+        <div class="grid-2">
+            <!-- LEFT COLUMN -->
+            <div style="display:flex; flex-direction:column; gap:10px; min-height:0;">
+                <!-- CAMERA POPUP BUTTON (Replaces embedded streams) -->
+                <div class="card"
+                    style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border: 2px solid #0f3460;">
+                    <div style="text-align:center;">
+                        <i class="fas fa-video"
+                            style="font-size: 64px; color: cyan; margin-bottom: 20px; display: block;"></i>
+                        <h2 style="color: #fff; margin-bottom: 10px; font-size: 24px;">Camera Feeds</h2>
+                        <p style="color: #888; margin-bottom: 25px; font-size: 14px;">Open cameras in a separate
+                            window for better viewing</p>
+                        <button class="btn-popup" onclick="openCameraPopup()"
+                            style="padding: 15px 40px; font-size: 16px; margin: 0 auto;">
+                            <i class="fas fa-external-link-alt"></i> OPEN CAMERA WINDOW
+                        </button>
                     </div>
                 </div>
             </div>
-        </div>
-
-        <div id="tab-mission" class="tab-pane">
-            <div class="grid-2">
-                <div class="card" style="height:100%">
-                    <button class="btn-green" style="width:100%; margin-bottom:10px; padding:10px;"
-                        onclick="sendSysCommand('init_mission')">INITIALIZE NAV2 & RTABMAP</button>
-                    <div id="map"></div>
+            <div style="display:flex; flex-direction:column; gap:10px; min-height:0;">
+                <div class="card card-compact" style="padding:8px;">
+                    <h3 style="margin-bottom:5px;">GPS</h3>
+                    <div style="display:flex; gap:20px;">
+                        <span>LAT: <span id="gps-lat">0.000000</span></span>
+                        <span>LON: <span id="gps-lon">0.000000</span></span>
+                    </div>
                 </div>
-                <div class="card" style="display:flex; flex-direction:column; gap:10px;">
-                    <!-- Mission Plan Grid -->
-                    <div style="flex:1; overflow-y:auto;">
-                        <h3 style="margin:0 0 10px 0;">Mission Plan</h3>
-                        <div class="mission-grid-header">
-                            <div class="mission-grid-color-label"></div>
-                            <div class="mission-grid-col-header">PICKUP</div>
-                            <div class="mission-grid-col-header">DROPOFF</div>
+                <div class="card card-compact" style="padding:8px;">
+                    <h3 style="margin-bottom:5px;">Odometry (Logging)</h3>
+                    <div style="display:flex; gap:20px;">
+                        <span>X: <span id="odom-x">0.000</span></span>
+                        <span>Y: <span id="odom-y">0.000</span></span>
+                    </div>
+                </div>
+                <div class="card card-compact" style="padding:8px;">
+                    <h3 style="margin-bottom:5px;">Log Target</h3>
+                    <select id="obj-select" style="margin-bottom:5px;">
+                        <option value="pickup">PICKUP</option>
+                        <option value="dropoff">DROPOFF</option>
+                    </select>
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr 1fr; gap:5px;">
+                        <button class="btn-red" onclick="selColor('RED')">R</button>
+                        <button class="btn-yellow" onclick="selColor('YELLOW')">Y</button>
+                        <button class="btn-orange" onclick="selColor('ORANGE')" style="background:#f39c12;">O</button>
+                        <button class="btn-blue" onclick="selColor('BLUE')">B</button>
+                        <button class="btn-green" onclick="selColor('GREEN')">G</button>
+                    </div>
+                    <button class="btn-blue" style="margin-top:5px;" onclick="sendLog()">LOG</button>
+                    <div id="log-msg" style="text-align:center; font-size:12px; margin-top:3px;">Ready</div>
+
+                    <!-- Waypoint Logging Tabs (moved from mission tab) -->
+                    <div style="margin-top:10px;">
+                        <div class="waypoint-tabs" style="display:flex; gap:10px;">
+                            <button class="btn-blue" id="log-waypoint1-btn" style="flex:1;"
+                                onclick="logWaypoint('waypoint1')">Log Waypoint 1</button>
+                            <button class="btn-blue" id="log-waypoint2-btn" style="flex:1;"
+                                onclick="logWaypoint('waypoint2')">Log Waypoint 2</button>
                         </div>
-                        <div id="mission-plan-grid" class="mission-plan-grid">
-                            <!-- Dynamic content loaded by JS -->
-                        </div>
-                        <div style="margin-top:10px; display:flex; gap:10px;">
-                            <button class="btn-blue" style="flex:1;" onclick="refreshMissionPlan()">REFRESH</button>
-                            <button class="btn-red" style="flex:1;" onclick="clearMissionPlan()">CLEAR</button>
-                        </div>
-                    </div>
-
-                    <!-- Mission Queue Section -->
-                    <div style="border-top:1px solid #444; padding-top:10px;">
-                        <h4
-                            style="margin:0 0 5px 0; color:#aaa; display:flex; justify-content:space-between; align-items:center;">
-                            <span>Mission Queue</span>
-                            <button class="btn-red" style="width:auto; padding:3px 10px; font-size:11px;"
-                                onclick="clearMissionQueue()">CLEAR QUEUE</button>
-                        </h4>
-                        <div id="mission-queue" class="mission-queue">
-                            <div class="queue-empty">No waypoints in queue. Click coordinates above to add.</div>
-                        </div>
-                    </div>
-
-                    <!-- Current Mission Status -->
-                    <div id="mission-status-panel" class="mission-status-panel" style="display:none;">
-                        <h4 style="margin:0 0 5px 0; color:#aaa;">Mission Progress</h4>
-                        <div id="mission-progress-display" style="background:#222; padding:10px; border-radius:4px;">
-                            <!-- Dynamic progress info -->
-                        </div>
-                    </div>
-
-                    <!-- Controls -->
-                    <div style="display:flex; gap:10px;">
-                        <button class="btn-green" style="flex:1; height:60px;"
-                            onclick="proceedWithQueue()">PROCEED</button>
-                        <button class="btn-red" style="flex:1; height:60px;" onclick="stopMission()">STOP</button>
-                    </div>
-                    <!-- Status & Log -->
-                    <ul id="mission-log" style="flex:1; overflow-y:auto; max-height:120px;"></ul>
-                    <div style="border-top:1px solid #444; padding-top:10px;">
-                        <div>RASPI: <span id="status-raspi-mission">--</span></div>
-                        <div>JETSON: <span id="status-jetson-mission">--</span></div>
+                        <div id="waypoint-log-status" style="margin-top:5px; color:#aaa; font-size:12px;"></div>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <!-- Edit Coordinate Modal -->
-        <div id="edit-coord-modal" class="modal-overlay" style="display:none;">
-            <div class="modal-content">
-                <h3 style="margin:0 0 15px 0; color:#fff;">Edit Coordinate</h3>
-                <div style="margin-bottom:10px;">
-                    <label style="color:#aaa; font-size:12px;">Type</label>
-                    <input type="text" id="edit-type" disabled
-                        style="width:100%; padding:8px; background:#333; color:#888; border:1px solid #555; border-radius:4px;">
-                </div>
-                <div style="margin-bottom:10px;">
-                    <label style="color:#aaa; font-size:12px;">Color</label>
-                    <input type="text" id="edit-color" disabled
-                        style="width:100%; padding:8px; background:#333; color:#888; border:1px solid #555; border-radius:4px;">
-                </div>
-                <div style="margin-bottom:10px;">
-                    <label style="color:#aaa; font-size:12px;">Latitude</label>
-                    <input type="number" id="edit-lat" step="0.000001"
-                        style="width:100%; padding:8px; background:#222; color:#fff; border:1px solid #555; border-radius:4px;">
-                </div>
-                <div style="margin-bottom:15px;">
-                    <label style="color:#aaa; font-size:12px;">Longitude</label>
-                    <input type="number" id="edit-lon" step="0.000001"
-                        style="width:100%; padding:8px; background:#222; color:#fff; border:1px solid #555; border-radius:4px;">
-                </div>
-                <div style="display:flex; gap:10px;">
-                    <button class="btn-green" style="flex:1;" onclick="saveCoordEdit()">SAVE</button>
-                    <button class="btn-red" style="flex:1;" onclick="deleteCoord()">DELETE</button>
-                    <button style="flex:1;" onclick="closeEditModal()">CANCEL</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="tab-arm" class="tab-pane">
-            <div class="grid-2">
-                <!-- LEFT COLUMN: Controls & Visualization -->
-                <div style="display:flex; flex-direction:column; gap:10px; min-height:0;">
-                    <!-- INIT LD & ARM BUTTONS -->
-                    <div style="display:flex; gap:10px;">
-                        <button class="btn-green" id="init-ld-btn" style="flex:1; padding:10px 0;"
-                            onclick="sendSysCommand('init_ld')">INIT LD</button>
-                        <button class="btn-green" id="init-servo-btn" style="flex:1; padding:10px 0;"
-                            onclick="sendSysCommand('init_servo')">SERVO</button>
-                        <button class="btn-green" id="init-arm-btn" style="flex:1; padding:10px 0;"
-                            onclick="sendSysCommand('init_arm')">INIT ARM</button>
+                <div class="card card-compact" style="padding:8px;">
+                    <h3 style="margin-bottom:5px;">Status</h3>
+                    <div style="display:flex; justify-content:space-between; font-size:14px;">
+                        <span>RASPI: <span id="status-raspi-recon">--</span></span>
+                        <span>JETSON: <span id="status-jetson-recon">--</span></span>
                     </div>
-
-                    <!-- PS5 INPUT -->
+                    <button class="btn-green" style="margin-top:8px;" onclick="sendSysCommand('init_drive')">INITIALIZE
+                        DRIVE</button>
+                </div>
+                <!-- Visuals Row -->
+                <div style="display:flex; gap:10px; flex:1; min-height:0;">
                     <div class="card card-compact"
-                        style="flex:1; display:flex; flex-direction:column; align-items:center; min-height:0; padding:8px;">
-                        <h3 style="margin-bottom:5px;">PS5 Input</h3>
-                        <div
-                            style="flex:1; width:100%; overflow:hidden; display:flex; justify-content:center; align-items:center; min-height:0;">
-                            <div id="ps5-container"
-                                style="position:relative; width:450px; height:250px; background:#222; border-radius:30px; border:2px solid #444; box-shadow:inset 0 0 15px #000; transform:scale(0.9); transform-origin:center center;">
-                                <!-- D-Pad -->
-                                <div id="btn-up" class="ps-btn pill"
-                                    style="position:absolute; top:80px; left:83px; width:22px; height:22px;"></div>
-                                <div id="btn-down" class="ps-btn pill"
-                                    style="position:absolute; top:123px; left:83px; width:22px; height:22px;"></div>
-                                <div id="btn-left" class="ps-btn pill"
-                                    style="position:absolute; top:102px; left:59px; width:22px; height:22px;"></div>
-                                <div id="btn-right" class="ps-btn pill"
-                                    style="position:absolute; top:102px; left:105px; width:22px; height:22px;"></div>
-                                <!-- Face Buttons -->
-                                <div id="btn-triangle" class="ps-btn round"
-                                    style="position:absolute; top:80px; right:83px; width:24px; height:24px;"></div>
-                                <div id="btn-cross" class="ps-btn round"
-                                    style="position:absolute; top:123px; right:83px; width:24px; height:24px;"></div>
-                                <div id="btn-square" class="ps-btn round"
-                                    style="position:absolute; top:102px; right:105px; width:24px; height:24px;"></div>
-                                <div id="btn-circle" class="ps-btn round"
-                                    style="position:absolute; top:102px; right:59px; width:24px; height:24px;"></div>
-                                <!-- Sticks -->
-                                <div
-                                    style="position:absolute; top:160px; left:135px; width:35px; height:35px; border:2px solid #555; border-radius:50%; transform:translate(-50%,-50%);">
-                                </div>
-                                <div
-                                    style="position:absolute; top:160px; right:135px; width:35px; height:35px; border:2px solid #555; border-radius:50%; transform:translate(50%,-50%);">
-                                </div>
-                                <div id="stick-l"
-                                    style="position:absolute; top:160px; left:135px; width:18px; height:18px; background:cyan; border-radius:50%; transform:translate(-50%,-50%); box-shadow:0 0 5px cyan;">
-                                </div>
-                                <div id="stick-r"
-                                    style="position:absolute; top:160px; right:135px; width:18px; height:18px; background:cyan; border-radius:50%; transform:translate(50%,-50%); box-shadow:0 0 5px cyan;">
-                                </div>
-                                <!-- Bumpers -->
-                                <div id="btn-l1" class="ps-btn"
-                                    style="position:absolute; top:28px; left:45px; width:70px; height:16px; border-radius:8px; transform:rotate(-10deg);">
-                                </div>
-                                <div id="btn-r1" class="ps-btn"
-                                    style="position:absolute; top:28px; right:45px; width:70px; height:16px; border-radius:8px; transform:rotate(10deg);">
-                                </div>
-                                <!-- Triggers -->
-                                <div class="ps-trigger-bar"
-                                    style="top:8px; left:12px; width:25px; height:65px; border-radius:4px;">
-                                    <div id="fill-l2" class="ps-trigger-fill"></div>
-                                    <div
-                                        style="position:absolute; width:100%; text-align:center; bottom:-16px; color:#aaa; font-size:9px;">
-                                        L2</div>
-                                </div>
-                                <div class="ps-trigger-bar"
-                                    style="top:8px; right:12px; width:25px; height:65px; border-radius:4px;">
-                                    <div id="fill-r2" class="ps-trigger-fill"></div>
-                                    <div
-                                        style="position:absolute; width:100%; text-align:center; bottom:-16px; color:#aaa; font-size:9px;">
-                                        R2</div>
-                                </div>
-                                <!-- Center -->
-                                <div id="btn-share" class="ps-btn pill"
-                                    style="position:absolute; top:80px; left:125px; width:16px; height:8px;"></div>
-                                <div id="btn-opt" class="ps-btn pill"
-                                    style="position:absolute; top:80px; right:125px; width:16px; height:8px;"></div>
-                                <div id="btn-ps" class="ps-btn round"
-                                    style="position:absolute; top:165px; left:200px; width:16px; height:16px;"></div>
-                            </div>
-                        </div>
-                        <div style="font-size:13px; display:flex; gap:12px; justify-content:center; margin-top:3px;">
-                            <label><input type="checkbox" id="ps5-inv-x" checked> Inv X</label>
-                            <label><input type="checkbox" id="ps5-inv-y" checked> Inv Y</label>
-                        </div>
-                        <div style="text-align:center; font-size:12px; color:#aaa;">
-                            L(<span id="val-lx">0</span>,<span id="val-ly">0</span>) R(<span id="val-rx">0</span>,<span
-                                id="val-ry">0</span>)
-                        </div>
+                        style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:8px;">
+                        <h3 style="margin-bottom:5px;">Thrustmaster</h3>
+                        <canvas id="joyCanvas" width="200" height="120"
+                            style="background:#222; border-radius:4px;"></canvas>
                     </div>
-
-                    <!-- ARM SLIDERS -->
-                    <div class="card card-compact" style="padding:8px;">
-                        <h3 style="margin-bottom:5px;">Arm Control</h3>
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 15px;">
-                            <div class="arm-slider-group" style="margin:0;">
-                                <label style="font-size:12px;"><span>Base</span> <span id="val-base">90</span>°</label>
-                                <input type="range" id="slider-base" min="0" max="180" value="90" style="margin:3px 0;">
-                            </div>
-                            <div class="arm-slider-group" style="margin:0;">
-                                <label style="font-size:12px;"><span>Shoulder</span> <span
-                                        id="val-shoulder">90</span>°</label>
-                                <input type="range" id="slider-shoulder" min="0" max="180" value="90"
-                                    style="margin:3px 0;">
-                            </div>
-                            <div class="arm-slider-group" style="margin:0;">
-                                <label style="font-size:12px;"><span>Elbow</span> <span
-                                        id="val-elbow">90</span>°</label>
-                                <input type="range" id="slider-elbow" min="0" max="180" value="90"
-                                    style="margin:3px 0;">
-                            </div>
-                            <div class="arm-slider-group" style="margin:0;">
-                                <label style="font-size:12px;"><span>Gripper</span> <span
-                                        id="val-gripper">50</span>%</label>
-                                <input type="range" id="slider-gripper" min="0" max="100" value="50"
-                                    style="margin:3px 0;">
-                            </div>
+                    <div class="card card-compact"
+                        style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:8px;">
+                        <h3 style="margin-bottom:5px;">Vector</h3>
+                        <canvas id="vector-canvas" width="150" height="150"
+                            style="background:#222; border-radius:4px;"></canvas>
+                        <div style="display:flex; gap:8px; font-size:12px; color:#aaa; margin-top:3px;">
+                            <label><input type="checkbox" id="vec-inv-x" checked> X</label>
+                            <label><input type="checkbox" id="vec-inv-y" checked> Y</label>
+                            <label><input type="checkbox" id="vec-swap"> Sw</label>
                         </div>
-                    </div>
-                </div>
-
-                <!-- RIGHT COLUMN: CAMERAS -->
-                <div style="display:flex; flex-direction:column; gap:10px; min-height:0;">
-                    <h3 style="color:#aaa; border-bottom:1px solid #444; padding-bottom:5px; margin:0;">Arm & LD Cameras
-                    </h3>
-                    <div class="cam-slot" style="flex:1;">
-                        <select class="cam-select" onchange="updateCamera('cam-arm-1', this.value)"></select>
-                        <img id="cam-arm-1" class="camera-feed" src="" alt="NO SIGNAL">
-                    </div>
-                    <div class="cam-slot" style="flex:1; position:relative;">
-                        <div
-                            style="position:absolute; top:2px; left:2px; background:rgba(0,0,0,0.7); padding:2px 6px; font-size:10px; border-radius:3px; z-index:10; color:#fff;">
-                            GIMBAL</div>
-                        <select class="cam-select" onchange="updateCamera('cam-arm-2', this.value)"></select>
-                        <img id="cam-arm-2" class="camera-feed" src="" alt="NO SIGNAL">
-                    </div>
-                    <div class="cam-slot" style="flex:1;">
-                        <select class="cam-select" onchange="updateCamera('cam-arm-3', this.value)"></select>
-                        <img id="cam-arm-3" class="camera-feed" src="" alt="NO SIGNAL">
+                        <div style="display:flex; gap:10px; font-size:12px; color:#aaa;">
+                            <span>VX:<span id="val-vx" style="color:cyan">0</span></span>
+                            <span>VZ:<span id="val-vz" style="color:cyan">0</span></span>
+                            <span>SPD:<span id="val-spd" style="color:cyan">0</span></span>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <script src="js/config.js?v=10013"></script>
-        <script src="js/ros_module.js?v=10013"></script>
-        <script src="js/map_module.js?v=10013"></script>
-        <script src="js/main.js?v=10013"></script>
+    <div id="tab-mission" class="tab-pane">
+        <div class="grid-2"
+            style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px; height: 100%; min-height: 0;">
+            <div class="card" style="display:flex; flex-direction:column; gap:10px; overflow-y: auto; min-height: 0;">
+                <button class="btn-green" style="width:100%; padding:10px; flex-shrink: 0;"
+                    onclick="sendSysCommand('init_mission')">INITIALIZE NAV2 &amp; RTABMAP</button>
+                <!-- Mission Plan Grid -->
+                <div style="flex-shrink: 0;">
+                    <h3 style="margin:0 0 10px 0;">Mission Plan</h3>
+                    <div class="mission-grid-header">
+                        <div class="mission-grid-color-label"></div>
+                        <div class="mission-grid-col-header">PICKUP</div>
+                        <div class="mission-grid-col-header">DROPOFF</div>
+                    </div>
+                    <div id="mission-plan-grid" class="mission-plan-grid">
+                        <!-- Dynamic content loaded by JS -->
+                    </div>
+                    <div style="margin-top:10px; display:flex; gap:10px;">
+                        <button class="btn-blue" style="flex:1;" onclick="refreshMissionPlan()">REFRESH</button>
+                        <button class="btn-red" style="flex:1;" onclick="clearMissionPlan()">CLEAR</button>
+                    </div>
+                </div>
+
+                <!-- Mission Queue Section -->
+                <div style="border-top:1px solid #444; padding-top:10px; flex-shrink: 0;">
+                    <h4
+                        style="margin:0 0 5px 0; color:#aaa; display:flex; justify-content:space-between; align-items:center;">
+                        <span>Mission Queue</span>
+                        <button class="btn-red" style="width:auto; padding:3px 10px; font-size:11px;"
+                            onclick="clearMissionQueue()">CLEAR QUEUE</button>
+                    </h4>
+                    <div id="mission-queue" class="mission-queue">
+                        <div class="queue-empty">No waypoints in queue. Click coordinates above to add.</div>
+                    </div>
+                </div>
+
+                <!-- Current Mission Status -->
+                <div id="mission-status-panel" class="mission-status-panel" style="display:none; flex-shrink: 0;">
+                    <h4 style="margin:0 0 5px 0; color:#aaa;">Mission Progress</h4>
+                    <div id="mission-progress-display" style="background:#222; padding:10px; border-radius:4px;">
+                        <!-- Dynamic progress info -->
+                    </div>
+                </div>
+
+                <!-- Controls -->
+                <div style="display:flex; gap:10px; flex-shrink: 0;">
+                    <button class="btn-green" style="flex:1; height:50px;" onclick="proceedWithQueue()">PROCEED</button>
+                    <button class="btn-red" style="flex:1; height:50px;" onclick="stopMission()">STOP</button>
+                </div>
+                <!-- Status & Log -->
+                <ul id="mission-log" style="overflow-y:auto; max-height:100px; flex-shrink: 0; margin: 0;"></ul>
+                <div style="border-top:1px solid #444; padding-top:10px; flex-shrink: 0;">
+                    <div>RASPI: <span id="status-raspi-mission">--</span></div>
+                    <div>JETSON: <span id="status-jetson-mission">--</span></div>
+                </div>
+            </div>
+            <div style="display: flex; flex-direction: column; min-height: 0;">
+                <div id="chronological-log-container" class="card"
+                    style="margin-top:0; flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333; padding-bottom:10px; margin-bottom:10px;">
+                        <h3 style="margin:0; border:none; padding:0;">Chronological Log</h3>
+                        <button class="btn-red" style="width:auto; padding:5px 12px; font-size:11px;" onclick="clearWaypoints()">
+                            <i class="fas fa-trash"></i> CLEAR WAYPOINTS
+                        </button>
+                    </div>
+                    <div id="chronological-log" style="flex: 1; overflow-y: auto; overflow-x: hidden;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Coordinate Modal -->
+    <div id="edit-coord-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-content">
+            <h3 style="margin:0 0 15px 0; color:#fff;">Edit Coordinate</h3>
+            <div style="margin-bottom:10px;">
+                <label style="color:#aaa; font-size:12px;">Type</label>
+                <input type="text" id="edit-type" disabled
+                    style="width:100%; padding:8px; background:#333; color:#888; border:1px solid #555; border-radius:4px;">
+            </div>
+            <div style="margin-bottom:10px;">
+                <label style="color:#aaa; font-size:12px;">Color</label>
+                <input type="text" id="edit-color" disabled
+                    style="width:100%; padding:8px; background:#333; color:#888; border:1px solid #555; border-radius:4px;">
+            </div>
+            <div style="margin-bottom:10px;">
+                <label style="color:#aaa; font-size:12px;">Latitude</label>
+                <input type="number" id="edit-lat" step="0.000001"
+                    style="width:100%; padding:8px; background:#222; color:#fff; border:1px solid #555; border-radius:4px;">
+            </div>
+            <div style="margin-bottom:15px;">
+                <label style="color:#aaa; font-size:12px;">Longitude</label>
+                <input type="number" id="edit-lon" step="0.000001"
+                    style="width:100%; padding:8px; background:#222; color:#fff; border:1px solid #555; border-radius:4px;">
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-green" style="flex:1;" onclick="saveCoordEdit()">SAVE</button>
+                <button class="btn-red" style="flex:1;" onclick="deleteCoord()">DELETE</button>
+                <button style="flex:1;" onclick="closeEditModal()">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-arm" class="tab-pane">
+        <div class="grid-2">
+            <!-- LEFT COLUMN: CONTROLLER & ARM CONTROLS -->
+            <div style="display:flex; flex-direction:column; gap:10px; min-height:0;">
+                <!-- INIT BUTTONS -->
+                <div style="display:flex; gap:10px;">
+                    <button class="btn-green" style="flex:1;" onclick="sendSysCommand('init_ld')">INIT LD</button>
+                    <button class="btn-blue" style="flex:1;" onclick="sendSysCommand('servo_init')">SERVO INIT</button>
+                    <button class="btn-green" style="flex:1;" onclick="sendSysCommand('init_arm')">INIT ARM</button>
+                </div>
+                <!-- PS5 CONTROLLER VISUAL -->
+                <div class="card card-compact" style="padding:8px;">
+                    <h3 style="margin-bottom:5px;">PS5 Controller</h3>
+                    <div
+                        style="position:relative; width:420px; height:210px; background:#1a1a1a; border-radius:10px; margin:0 auto;">
+                        <!-- D-Pad -->
+                        <div id="btn-up" class="ps-btn pill"
+                            style="position:absolute; top:90px; left:55px; width:20px; height:20px;"></div>
+                        <div id="btn-down" class="ps-btn pill"
+                            style="position:absolute; top:130px; left:55px; width:20px; height:20px;"></div>
+                        <div id="btn-left" class="ps-btn pill"
+                            style="position:absolute; top:110px; left:35px; width:20px; height:20px;"></div>
+                        <div id="btn-right" class="ps-btn pill"
+                            style="position:absolute; top:110px; left:75px; width:20px; height:20px;"></div>
+                        <!-- Face Buttons -->
+                        <div id="btn-triangle" class="ps-btn round"
+                            style="position:absolute; top:90px; right:55px; width:20px; height:20px;"></div>
+                        <div id="btn-cross" class="ps-btn round"
+                            style="position:absolute; top:130px; right:55px; width:20px; height:20px;"></div>
+                        <div id="btn-square" class="ps-btn round"
+                            style="position:absolute; top:110px; right:75px; width:20px; height:20px;"></div>
+                        <div id="btn-circle" class="ps-btn round"
+                            style="position:absolute; top:110px; right:35px; width:20px; height:20px;"></div>
+                        <!-- Triggers -->
+                        <div class="ps-trigger-bar"
+                            style="top:8px; left:12px; width:25px; height:65px; border-radius:4px;">
+                            <div id="fill-l2" class="ps-trigger-fill"></div>
+                            <div
+                                style="position:absolute; width:100%; text-align:center; bottom:-16px; color:#aaa; font-size:9px;">
+                                L2</div>
+                        </div>
+                        <div class="ps-trigger-bar"
+                            style="top:8px; right:12px; width:25px; height:65px; border-radius:4px;">
+                            <div id="fill-r2" class="ps-trigger-fill"></div>
+                            <div
+                                style="position:absolute; width:100%; text-align:center; bottom:-16px; color:#aaa; font-size:9px;">
+                                R2</div>
+                        </div>
+                        <!-- Center -->
+                        <div id="btn-share" class="ps-btn pill"
+                            style="position:absolute; top:80px; left:125px; width:16px; height:8px;"></div>
+                        <div id="btn-opt" class="ps-btn pill"
+                            style="position:absolute; top:80px; right:125px; width:16px; height:8px;"></div>
+                        <div id="btn-ps" class="ps-btn round"
+                            style="position:absolute; top:165px; left:200px; width:16px; height:16px;"></div>
+                    </div>
+                    <div style="font-size:13px; display:flex; gap:12px; justify-content:center; margin-top:10px;">
+                        <label><input type="checkbox" id="ps5-inv-x" checked> Inv X</label>
+                        <label><input type="checkbox" id="ps5-inv-y" checked> Inv Y</label>
+                    </div>
+                    <div style="text-align:center; font-size:12px; color:#aaa; margin-top:5px;">
+                        L(<span id="val-lx">0</span>,<span id="val-ly">0</span>) R(<span id="val-rx">0</span>,<span
+                            id="val-ry">0</span>)
+                    </div>
+                </div>
+
+                <!-- ARM SLIDERS -->
+                <div class="card card-compact" style="padding:8px;">
+                    <h3 style="margin-bottom:5px;">Arm Control</h3>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 15px;">
+                        <div class="arm-slider-group" style="margin:0;">
+                            <label style="font-size:12px;"><span>Base</span> <span id="val-base">90</span>°</label>
+                            <input type="range" id="slider-base" min="0" max="180" value="90" style="margin:3px 0;">
+                        </div>
+                        <div class="arm-slider-group" style="margin:0;">
+                            <label style="font-size:12px;"><span>Shoulder</span> <span
+                                    id="val-shoulder">90</span>°</label>
+                            <input type="range" id="slider-shoulder" min="0" max="180" value="90" style="margin:3px 0;">
+                        </div>
+                        <div class="arm-slider-group" style="margin:0;">
+                            <label style="font-size:12px;"><span>Elbow</span> <span id="val-elbow">90</span>°</label>
+                            <input type="range" id="slider-elbow" min="0" max="180" value="90" style="margin:3px 0;">
+                        </div>
+                        <div class="arm-slider-group" style="margin:0;">
+                            <label style="font-size:12px;"><span>Gripper</span> <span
+                                    id="val-gripper">50</span>%</label>
+                            <input type="range" id="slider-gripper" min="0" max="100" value="50" style="margin:3px 0;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: CAMERAS -->
+            <div style="display:flex; flex-direction:column; gap:10px; min-height:0;">
+                <h3 style="color:#aaa; border-bottom:1px solid #444; padding-bottom:5px; margin:0;">Arm & LD Cameras
+                </h3>
+                <div class="cam-slot" style="flex:1;">
+                    <select class="cam-select" onchange="updateCamera('cam-arm-1', this.value)"></select>
+                    <img id="cam-arm-1" class="camera-feed" src="" alt="NO SIGNAL">
+                </div>
+                <div class="cam-slot" style="flex:1; position:relative;">
+                    <div
+                        style="position:absolute; top:2px; left:2px; background:rgba(0,0,0,0.7); padding:2px 6px; font-size:10px; border-radius:3px; z-index:10; color:#fff;">
+                        GIMBAL</div>
+                    <select class="cam-select" onchange="updateCamera('cam-arm-2', this.value)"></select>
+                    <img id="cam-arm-2" class="camera-feed" src="" alt="NO SIGNAL">
+                </div>
+                <div class="cam-slot" style="flex:1;">
+                    <select class="cam-select" onchange="updateCamera('cam-arm-3', this.value)"></select>
+                    <img id="cam-arm-3" class="camera-feed" src="" alt="NO SIGNAL">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/config.js?v=10013"></script>
+    <script src="js/ros_module.js?v=10013"></script>
+    <script src="js/map_module.js?v=10013"></script>
+    <script src="js/main.js?v=10013"></script>
 </body>
 
 </html>

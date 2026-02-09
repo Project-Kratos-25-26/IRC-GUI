@@ -59,8 +59,8 @@ echo "[LOCAL] Initializing NVGPU on Jetson..."
 bash scripts/init_nvgpu.sh > "data/init_nvgpu.log" 2>&1 &
 
 # 2.4 Start Camera Streams on Jetson (via SSH)
-echo "[LOCAL] Starting Jetson camera server..."
-bash scripts/start_cameras.sh > "data/start_cameras.log" 2>&1 &
+# echo "[LOCAL] Starting Jetson camera server..."
+# bash scripts/start_cameras.sh > "data/start_cameras.log" 2>&1 &
 
 # 3. Start Server
 echo "------------------------------"

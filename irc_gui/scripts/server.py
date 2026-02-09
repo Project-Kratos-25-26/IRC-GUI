@@ -27,6 +27,7 @@ ORIN_USER = "kratos"
 ORIN_IP = "192.168.1.10"
 ORIN_PASSWORD = "kratos123"
 ORIN_MISSION_PATH = "~/ros2_ws/src/rado_control_3/config/mission_plan.txt"
+ORIN_WAYPOINTS_PATH = "~/ros2_ws/src/rado_control_3/config/waypoints.txt"
 
 def ssh_read_file(remote_path):
     """Read file content from Orin via SSH."""
@@ -460,6 +461,72 @@ def get_mission_plan_raw():
         print(f"Error reading mission plan: {e}")
     
     return jsonify(result)
+
+
+# --- WAYPOINT ENDPOINTS ---
+@app.route("/api/waypoints")
+def get_waypoints():
+    """Return all waypoints from waypoints.txt on Orin."""
+    result = []
+    try:
+        content = ssh_read_file(ORIN_WAYPOINTS_PATH)
+        for idx, line in enumerate(content.split('\n')):
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split(',')
+            if len(parts) >= 3:
+                try:
+                    result.append({
+                        'index': idx,
+                        'name': parts[0].strip(),
+                        'lat': float(parts[1]),
+                        'lon': float(parts[2]),
+                        'timestamp': parts[3].strip() if len(parts) > 3 else ''
+                    })
+                except (ValueError, IndexError):
+                    continue
+    except Exception as e:
+        print(f"Error reading waypoints: {e}")
+    
+    return jsonify(result)
+
+
+@app.route("/api/waypoints/add", methods=['POST'])
+def add_waypoint():
+    """Add a new waypoint to waypoints.txt on Orin."""
+    try:
+        data = request.json
+        name = data.get('name', '').strip()
+        lat = data.get('lat')
+        lon = data.get('lon')
+        timestamp = data.get('timestamp', '')
+        
+        if not all([name, lat, lon]):
+            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+        
+        # CSV Format: name,lat,lon,timestamp
+        line = f"{name},{lat},{lon},{timestamp}"
+        
+        if ssh_append_file(ORIN_WAYPOINTS_PATH, line):
+            print(f"Added waypoint: {line}")
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'error': 'SSH append failed'}), 500
+    except Exception as e:
+        print(f"Error adding waypoint: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route("/api/waypoints/clear", methods=['POST'])
+def clear_waypoints():
+    """Clear the waypoints file on Orin."""
+    try:
+        if ssh_write_file(ORIN_WAYPOINTS_PATH, ""):
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'error': 'SSH write failed'}), 500
+    except Exception as e:
+        print(f"Error clearing waypoints: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route("/video_feed/<camera_name>")

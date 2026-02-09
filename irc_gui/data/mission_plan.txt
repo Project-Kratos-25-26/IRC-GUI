@@ -1,0 +1,4 @@
+pickup,red,0.000,0.000
+pickup,yellow,0.000,0.000
+pickup,red,0.000,0.000
+pickup,blue,0.000,0.000
